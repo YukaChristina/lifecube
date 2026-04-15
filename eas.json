@@ -7,7 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "resourceClass": "m-medium"
+      "resourceClass": "medium"
     },
     "preview": {
       "distribution": "internal"
