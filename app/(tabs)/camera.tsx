@@ -1,6 +1,10 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 
 type Photos = { back: string; front: string };
 type CaptureStep = 'idle' | 'capturingFront';
@@ -12,26 +16,86 @@ export default function CameraScreen() {
   const [captureStep, setCaptureStep] = useState<CaptureStep>('idle');
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+
+  // refs for use inside event callbacks (avoid stale closures)
+  const isCapturingRef = useRef(false);
+  const cameraActiveRef = useRef(false);
+
+  useEffect(() => {
+    isCapturingRef.current = isCapturing;
+  }, [isCapturing]);
+
+  useEffect(() => {
+    cameraActiveRef.current = cameraActive;
+    if (cameraActive) {
+      startVoice();
+    } else {
+      stopVoice();
+    }
+  }, [cameraActive]);
+
+  // ── 音声認識イベント ──────────────────────────────────────────
+  useSpeechRecognitionEvent('start', () => setVoiceListening(true));
+
+  useSpeechRecognitionEvent('end', () => {
+    setVoiceListening(false);
+    // continuous: true でも端末によって途切れる場合があるため自動再起動
+    if (cameraActiveRef.current) {
+      setTimeout(() => {
+        if (cameraActiveRef.current) startVoice();
+      }, 300);
+    }
+  });
+
+  useSpeechRecognitionEvent('result', (event) => {
+    const text = event.results[0]?.transcript ?? '';
+    if (text.includes('シャッター') && !isCapturingRef.current) {
+      handleTakePhoto();
+    }
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  useSpeechRecognitionEvent('error', (_event) => {
+    setVoiceListening(false);
+  });
+  // ─────────────────────────────────────────────────────────────
+
+  const startVoice = () => {
+    ExpoSpeechRecognitionModule.start({
+      lang: 'ja-JP',
+      interimResults: true,
+      continuous: true,
+    });
+  };
+
+  const stopVoice = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setVoiceListening(false);
+  };
 
   const handleStartCamera = async () => {
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) return;
     }
+    await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     setFacing('back');
     setCameraActive(true);
   };
 
   const handleTakePhoto = async () => {
-    if (!cameraRef.current || isCapturing) return;
+    if (!cameraRef.current || isCapturingRef.current) return;
     setIsCapturing(true);
+    isCapturingRef.current = true;
 
     // Step 1: 外カメラで撮影
     const backResult = await cameraRef.current.takePictureAsync();
     if (!backResult?.uri) {
       setIsCapturing(false);
+      isCapturingRef.current = false;
       return;
     }
     setBackPhotoUri(backResult.uri);
@@ -55,13 +119,14 @@ export default function CameraScreen() {
       setCaptureStep('idle');
       setBackPhotoUri(null);
       setIsCapturing(false);
+      isCapturingRef.current = false;
       setFacing('back');
-    }, 500); // カメラ切替の待機時間
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [captureStep, backPhotoUri]);
 
-  // プレビュー画面（両方の写真を表示）
+  // ── プレビュー画面 ────────────────────────────────────────────
   if (photos) {
     return (
       <ScrollView contentContainerStyle={styles.previewContainer}>
@@ -84,11 +149,20 @@ export default function CameraScreen() {
     );
   }
 
-  // カメラ画面
+  // ── カメラ画面 ────────────────────────────────────────────────
   if (cameraActive) {
     return (
       <View style={styles.cameraContainer}>
         <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
+
+        {/* 音声認識インジケーター */}
+        <View style={styles.voiceIndicator}>
+          <View style={[styles.voiceDot, voiceListening && styles.voiceDotActive]} />
+          <Text style={styles.voiceLabel}>
+            {voiceListening ? '音声認識中' : '音声待機中'}
+          </Text>
+        </View>
+
         {isCapturing && (
           <View style={styles.capturingOverlay}>
             <Text style={styles.capturingText}>
@@ -96,6 +170,7 @@ export default function CameraScreen() {
             </Text>
           </View>
         )}
+
         <View style={styles.cameraControls}>
           <TouchableOpacity
             style={styles.closeButton}
@@ -115,10 +190,11 @@ export default function CameraScreen() {
     );
   }
 
-  // トップ画面
+  // ── トップ画面 ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <Text style={styles.title}>カメラ</Text>
+      <Text style={styles.hint}>「シャッター」と言うと自動撮影します</Text>
       <TouchableOpacity style={styles.startButton} onPress={handleStartCamera}>
         <Text style={styles.startButtonText}>カメラを起動する</Text>
       </TouchableOpacity>
@@ -136,8 +212,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 8,
     color: '#333',
+  },
+  hint: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 24,
   },
   startButton: {
     backgroundColor: '#007AFF',
@@ -155,6 +236,32 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  voiceIndicator: {
+    position: 'absolute',
+    top: 56,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  voiceDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#888',
+  },
+  voiceDotActive: {
+    backgroundColor: '#FF3B30',
+  },
+  voiceLabel: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '500',
   },
   capturingOverlay: {
     position: 'absolute',
