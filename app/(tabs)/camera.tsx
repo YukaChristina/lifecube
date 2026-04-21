@@ -1,6 +1,7 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -10,6 +11,7 @@ type Photos = { back: string; front: string };
 type CaptureStep = 'idle' | 'capturingFront';
 
 export default function CameraScreen() {
+  const insets = useSafeAreaInsets();
   const [cameraActive, setCameraActive] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
   const [photos, setPhotos] = useState<Photos | null>(null);
@@ -156,7 +158,7 @@ export default function CameraScreen() {
         <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
 
         {/* 音声認識インジケーター */}
-        <View style={styles.voiceIndicator}>
+        <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
           <View style={[styles.voiceDot, voiceListening && styles.voiceDotActive]} />
           <Text style={styles.voiceLabel}>
             {voiceListening ? '音声認識中' : '音声待機中'}
@@ -171,7 +173,14 @@ export default function CameraScreen() {
           </View>
         )}
 
-        <View style={styles.cameraControls}>
+        <View style={[
+          styles.cameraControls,
+          {
+            paddingBottom: Math.max(insets.bottom, 20) + 16,
+            paddingLeft: insets.left + 24,
+            paddingRight: insets.right + 24,
+          },
+        ]}>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setCameraActive(false)}
@@ -239,7 +248,6 @@ const styles = StyleSheet.create({
   },
   voiceIndicator: {
     position: 'absolute',
-    top: 56,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,9 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 60,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   shutterButton: {
