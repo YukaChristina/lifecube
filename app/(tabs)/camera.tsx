@@ -1,11 +1,21 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
 import { useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
+import { composePhotos } from '@/utils/composePhoto';
 
 type Photos = { back: string; front: string };
 type CaptureStep = 'idle' | 'capturingFront';
@@ -15,6 +25,8 @@ export default function CameraScreen() {
   const [cameraActive, setCameraActive] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
   const [photos, setPhotos] = useState<Photos | null>(null);
+  const [composedUri, setComposedUri] = useState<string | null>(null);
+  const [isComposing, setIsComposing] = useState(false);
   const [captureStep, setCaptureStep] = useState<CaptureStep>('idle');
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -22,7 +34,6 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
-  // refs for use inside event callbacks (avoid stale closures)
   const isCapturingRef = useRef(false);
   const cameraActiveRef = useRef(false);
 
@@ -39,12 +50,21 @@ export default function CameraScreen() {
     }
   }, [cameraActive]);
 
+  // 2枚撮れたら自動で合成
+  useEffect(() => {
+    if (!photos) { setComposedUri(null); return; }
+    setIsComposing(true);
+    composePhotos(photos.front, photos.back)
+      .then(uri => setComposedUri(uri))
+      .catch((err) => Alert.alert('エラー', `画像の合成に失敗しました\n${err?.message ?? String(err)}`))
+      .finally(() => setIsComposing(false));
+  }, [photos]);
+
   // ── 音声認識イベント ──────────────────────────────────────────
   useSpeechRecognitionEvent('start', () => setVoiceListening(true));
 
   useSpeechRecognitionEvent('end', () => {
     setVoiceListening(false);
-    // continuous: true でも端末によって途切れる場合があるため自動再起動
     if (cameraActiveRef.current) {
       setTimeout(() => {
         if (cameraActiveRef.current) startVoice();
@@ -93,7 +113,6 @@ export default function CameraScreen() {
     setIsCapturing(true);
     isCapturingRef.current = true;
 
-    // Step 1: 外カメラで撮影
     const backResult = await cameraRef.current.takePictureAsync();
     if (!backResult?.uri) {
       setIsCapturing(false);
@@ -101,13 +120,10 @@ export default function CameraScreen() {
       return;
     }
     setBackPhotoUri(backResult.uri);
-
-    // Step 2: 内カメラに切替（useEffectで撮影）
     setFacing('front');
     setCaptureStep('capturingFront');
   };
 
-  // 内カメラへの切替後に撮影
   useEffect(() => {
     if (captureStep !== 'capturingFront' || !backPhotoUri) return;
 
@@ -128,26 +144,52 @@ export default function CameraScreen() {
     return () => clearTimeout(timer);
   }, [captureStep, backPhotoUri]);
 
+  const handleSave = async () => {
+    if (!composedUri) return;
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要です', '設定から写真へのアクセスを許可してください');
+      return;
+    }
+    await MediaLibrary.saveToLibraryAsync(composedUri);
+    Alert.alert('保存しました', '写真アプリに保存されました', [
+      { text: 'OK', onPress: () => { setPhotos(null); setComposedUri(null); } },
+    ]);
+  };
+
+  const handleRetake = () => {
+    setPhotos(null);
+    setComposedUri(null);
+    setCameraActive(true);
+  };
+
   // ── プレビュー画面 ────────────────────────────────────────────
   if (photos) {
     return (
-      <ScrollView contentContainerStyle={styles.previewContainer}>
+      <View style={styles.previewContainer}>
         <Text style={styles.title}>撮影結果</Text>
-        <Text style={styles.label}>外カメラ</Text>
-        <Image source={{ uri: photos.back }} style={styles.preview} />
-        <Text style={styles.label}>内カメラ</Text>
-        <Image source={{ uri: photos.front }} style={styles.preview} />
+
+        {isComposing ? (
+          <View style={styles.composingBox}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.composingText}>画像を合成中...</Text>
+          </View>
+        ) : composedUri ? (
+          <Image source={{ uri: composedUri }} style={styles.composedImage} />
+        ) : null}
+
         <View style={styles.previewButtons}>
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={() => { setPhotos(null); setCameraActive(true); }}>
+          <TouchableOpacity style={styles.retakeButton} onPress={handleRetake}>
             <Text style={styles.retakeText}>撮り直す</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.doneButton} onPress={() => setPhotos(null)}>
-            <Text style={styles.doneText}>完了</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, (!composedUri || isComposing) && styles.disabledButton]}
+            onPress={handleSave}
+            disabled={!composedUri || isComposing}>
+            <Text style={styles.saveText}>保存する</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     );
   }
 
@@ -157,7 +199,6 @@ export default function CameraScreen() {
       <View style={styles.cameraContainer}>
         <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
 
-        {/* 音声認識インジケーター */}
         <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
           <View style={[styles.voiceDot, voiceListening && styles.voiceDotActive]} />
           <Text style={styles.voiceLabel}>
@@ -326,23 +367,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   previewContainer: {
+    flex: 1,
     alignItems: 'center',
     paddingVertical: 40,
     paddingHorizontal: 16,
     backgroundColor: '#fff',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#555',
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-    marginTop: 16,
+  composingBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
   },
-  preview: {
+  composingText: {
+    fontSize: 16,
+    color: '#555',
+  },
+  composedImage: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 1,
     borderRadius: 12,
+    marginTop: 16,
   },
   previewButtons: {
     flexDirection: 'row',
@@ -360,13 +405,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  doneButton: {
+  saveButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
   },
-  doneText: {
+  disabledButton: {
+    opacity: 0.4,
+  },
+  saveText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',

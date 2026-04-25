@@ -7,12 +7,15 @@
     "scheme": "lifecube",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/images/icon.png",
     "ios": {
       "bundleIdentifier": "com.yukachristina.lifecube",
       "supportsTablet": true,
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone.",
+        "NSPhotoLibraryAddUsageDescription": "撮影した写真を保存するために使用します。",
+        "NSPhotoLibraryUsageDescription": "撮影した写真を閲覧・保存するために使用します。",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -31,7 +34,15 @@
           "origin": "https://lifecube.app"
         }
       ],
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "撮影した写真を閲覧・保存するために使用します。",
+          "savePhotosPermission": "撮影した写真を保存するために使用します。",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
