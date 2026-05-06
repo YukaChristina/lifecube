@@ -1,83 +1,125 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { useCallback, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
   Image,
-  Modal,
+  SectionList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const GALLERY_DIR = `${FileSystem.documentDirectory}gallery/`;
+import { listPhotoSets } from '@/features/photo-sets/db';
+import { groupPhotoSetsByDate } from '@/features/photo-sets/group-photo-sets';
+import type { PhotoSet } from '@/features/photo-sets/types';
+
 const NUM_COLUMNS = 3;
-const ITEM_SIZE = Dimensions.get('window').width / NUM_COLUMNS;
+const HORIZONTAL_PADDING = 16;
+const GRID_GAP = 6;
+
+type PhotoSetGridSection = {
+  title: string;
+  data: PhotoSet[][];
+};
+
+function chunkPhotoSets(photoSets: PhotoSet[]) {
+  const rows: PhotoSet[][] = [];
+
+  for (let index = 0; index < photoSets.length; index += NUM_COLUMNS) {
+    rows.push(photoSets.slice(index, index + NUM_COLUMNS));
+  }
+
+  return rows;
+}
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [selectedUri, setSelectedUri] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const [sections, setSections] = useState<PhotoSetGridSection[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const thumbnailWidth =
+    (width - HORIZONTAL_PADDING * 2 - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
   const loadPhotos = useCallback(async () => {
     try {
-      const info = await FileSystem.getInfoAsync(GALLERY_DIR);
-      if (!info.exists) { setPhotos([]); return; }
-      const files = await FileSystem.readDirectoryAsync(GALLERY_DIR);
-      const sorted = files
-        .filter(f => f.endsWith('.png') || f.endsWith('.jpg'))
-        .sort()
-        .reverse()
-        .map(f => `${GALLERY_DIR}${f}`);
-      setPhotos(sorted);
+      const photoSets = await listPhotoSets();
+      const visiblePhotoSets: PhotoSet[] = [];
+
+      for (const photoSet of photoSets) {
+        if (photoSet.deletedAt !== null) continue;
+
+        const fileInfo = await FileSystem.getInfoAsync(photoSet.composedLocalUri);
+        if (fileInfo.exists) {
+          visiblePhotoSets.push(photoSet);
+        }
+      }
+
+      setSections(
+        groupPhotoSetsByDate(visiblePhotoSets).map(group => ({
+          title: group.title,
+          data: chunkPhotoSets(group.items),
+        })),
+      );
+      setErrorMessage(null);
     } catch {
-      setPhotos([]);
+      setSections([]);
+      setErrorMessage('アルバムを読み込めませんでした');
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { loadPhotos(); }, [loadPhotos]));
-
-  if (photos.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyText}>まだ写真がありません</Text>
-        <Text style={styles.emptyHint}>カメラで撮影して保存すると、ここに表示されます</Text>
-      </View>
-    );
-  }
+  useFocusEffect(
+    useCallback(() => {
+      void loadPhotos();
+    }, [loadPhotos]),
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>ギャラリー</Text>
-      <FlatList
-        data={photos}
-        numColumns={NUM_COLUMNS}
-        keyExtractor={item => item}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => setSelectedUri(item)}>
-            <Image source={{ uri: item }} style={styles.thumbnail} />
-          </TouchableOpacity>
-        )}
-      />
+      <Text style={styles.title}>アルバム</Text>
 
-      <Modal visible={!!selectedUri} transparent animationType="fade">
-        <View style={styles.modalBg}>
-          <TouchableOpacity style={styles.closeArea} onPress={() => setSelectedUri(null)} />
-          {selectedUri && (
-            <Image
-              source={{ uri: selectedUri }}
-              style={styles.fullImage}
-              resizeMode="contain"
-            />
-          )}
-          <TouchableOpacity style={styles.modalClose} onPress={() => setSelectedUri(null)}>
-            <Text style={styles.modalCloseText}>閉じる</Text>
-          </TouchableOpacity>
+      {errorMessage ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>{errorMessage}</Text>
         </View>
-      </Modal>
+      ) : sections.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>まだ写真がありません</Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item, index) => `${item[0]?.id ?? 'empty'}-${index}`}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 18) + 18 },
+          ]}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => (
+            <View style={styles.gridRow}>
+              {item.map(photoSet => (
+                <Image
+                  key={photoSet.id}
+                  source={{ uri: photoSet.composedLocalUri }}
+                  style={[
+                    styles.thumbnail,
+                    {
+                      width: thumbnailWidth,
+                      height: thumbnailWidth * (16 / 9),
+                    },
+                  ]}
+                  resizeMode="cover"
+                />
+              ))}
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -85,67 +127,47 @@ export default function GalleryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFCFD',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#3F3941',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  listContent: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: 6,
+  },
+  sectionTitle: {
+    color: '#6D646B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: GRID_GAP,
+    marginBottom: GRID_GAP,
   },
   thumbnail: {
-    width: ITEM_SIZE,
-    height: ITEM_SIZE,
-    borderWidth: 1,
-    borderColor: '#fff',
+    borderRadius: 6,
+    backgroundColor: '#F6EEF2',
   },
   empty: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFCFD',
+    paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#555',
-  },
-  emptyHint: {
-    fontSize: 13,
-    color: '#999',
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-  modalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  fullImage: {
-    width: '100%',
-    height: '80%',
-  },
-  modalClose: {
-    position: 'absolute',
-    bottom: 48,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 24,
-  },
-  modalCloseText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    color: '#6D646B',
+    textAlign: 'center',
   },
 });

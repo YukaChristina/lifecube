@@ -407,8 +407,8 @@ export default function CameraScreen() {
               <TouchableOpacity style={styles.previewActionButton} onPress={handleShare}>
                 <Text style={styles.previewActionText}>Instagramで共有</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteActionButton} onPress={handleDeletePreview}>
-                <Text style={styles.deleteActionText}>削除する</Text>
+              <TouchableOpacity style={styles.previewActionButton} onPress={handleDeletePreview}>
+                <Text style={styles.previewActionText}>削除する</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -693,21 +693,6 @@ const styles = StyleSheet.create({
   },
   previewActionText: {
     color: '#4D4650',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  deleteActionButton: {
-    minWidth: 154,
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(200,184,196,0.58)',
-    backgroundColor: 'rgba(255,250,252,0.66)',
-  },
-  deleteActionText: {
-    color: '#7A6570',
     fontSize: 14,
     fontWeight: '800',
   },
