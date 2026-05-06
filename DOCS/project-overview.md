@@ -27,7 +27,6 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 - `app/_layout.tsx`: ルート Stack レイアウト
 - `app/(tabs)/_layout.tsx`: タブレイアウト
 - `app/(tabs)/index.tsx`: スターター由来のホーム画面
-- `app/(tabs)/explore.tsx`: スターター由来の Explore 画面
 - `app/(tabs)/camera.tsx`: カメラ機能の画面
 - `app/(tabs)/gallery.tsx`: ローカルギャラリー画面
 - `app/modal.tsx`: モーダル画面

@@ -12,7 +12,6 @@ app/
   (tabs)/
     _layout.tsx
     index.tsx
-    explore.tsx
     camera.tsx
     gallery.tsx
 components/
@@ -39,6 +38,37 @@ assets/
 - `app/` 配下には route になる画面と layout を置きます。
 - 共通 UI は `components/` に置きます。
 - hooks は `hooks/`、汎用ロジックは `utils/` など、route ではないコードを `app/` に置かないようにします。
+
+## 画面コードの分割方針
+
+MVP初期では、画面単位の実装を優先し、必要以上に先回りした抽象化は避けます。
+
+ただし、以下のようなロジックは `app/` の画面ファイルから切り出す候補です。
+
+- 音声認識の開始、停止、イベント購読
+- 「シャッター」と判定するトリガー語ロジック
+- 外側カメラから内側カメラへの連続撮影フロー
+- 写真保存、写真セット管理、削除
+- 合成パターン選択や設定保存
+
+切り出し先の候補:
+
+```text
+hooks/useShutterVoiceTrigger.ts
+hooks/useCameraCaptureFlow.ts
+utils/shutterTrigger.ts
+components/camera/
+constants/cameraTheme.ts
+```
+
+優先順位:
+
+1. まずMVPの体験を実機で確認できる状態にする。
+2. 同じ画面ファイルが読みづらくなった段階で、機能単位で切り出す。
+3. 複数画面から使うことが確定したロジックは `hooks/` または `utils/` に移す。
+4. 見た目だけの共通部品は `components/` に置く。
+
+リファクタリングは、動いている体験を壊さない小さい単位で行います。
 
 ## プラットフォーム方針
 
