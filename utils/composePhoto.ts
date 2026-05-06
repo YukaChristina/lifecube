@@ -1,42 +1,46 @@
 import { Skia, ClipOp, PaintStyle } from '@shopify/react-native-skia';
 import * as FileSystem from 'expo-file-system/legacy';
+import { CompositePattern } from '@/features/photo-sets/types';
 
 const OUTPUT_WIDTH = 1080;
 const OUTPUT_HEIGHT = 1920;
 
-const CX1 = 0;
-const CY1 = OUTPUT_HEIGHT * 0.33;
-const CX2 = OUTPUT_WIDTH;
-const CY2 = OUTPUT_HEIGHT * 0.67;
-const START_X = OUTPUT_WIDTH * 0.33;
-const END_X = OUTPUT_WIDTH * 0.67;
+// デザイン定数（パステルカラーと透明度）
+const COLORS = {
+  diagonal: { color: '#F3B8C8', opacity: 0.82, width: 4 },
+  circle: { color: '#C8DFF2', opacity: 0.86, width: 4 },
+  split: { color: '#C7E6DC', opacity: 0.88, width: 6 },
+} as const;
 
-function makeCurvePath() {
-  const path = Skia.Path.Make();
-  path.moveTo(START_X, 0);
-  path.cubicTo(CX1, CY1, CX2, CY2, END_X, OUTPUT_HEIGHT);
-  return path;
-}
+// 1. 斜めカット用パス
+function makeDiagonalPaths() {
+  const cx1 = 0;
+  const cy1 = OUTPUT_HEIGHT * 0.33;
+  const cx2 = OUTPUT_WIDTH;
+  const cy2 = OUTPUT_HEIGHT * 0.67;
+  const startX = OUTPUT_WIDTH * 0.33;
+  const endX = OUTPUT_WIDTH * 0.67;
 
-function makeLeftClip() {
-  const path = Skia.Path.Make();
-  path.moveTo(0, 0);
-  path.lineTo(START_X, 0);
-  path.cubicTo(CX1, CY1, CX2, CY2, END_X, OUTPUT_HEIGHT);
-  path.lineTo(0, OUTPUT_HEIGHT);
-  path.close();
-  return path;
-}
+  const curve = Skia.Path.Make();
+  curve.moveTo(startX, 0);
+  curve.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
 
-function makeRightClip() {
-  const path = Skia.Path.Make();
-  path.moveTo(START_X, 0);
-  path.lineTo(OUTPUT_WIDTH, 0);
-  path.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  path.lineTo(END_X, OUTPUT_HEIGHT);
-  path.cubicTo(CX2, CY2, CX1, CY1, START_X, 0);
-  path.close();
-  return path;
+  const leftClip = Skia.Path.Make();
+  leftClip.moveTo(0, 0);
+  leftClip.lineTo(startX, 0);
+  leftClip.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
+  leftClip.lineTo(0, OUTPUT_HEIGHT);
+  leftClip.close();
+
+  const rightClip = Skia.Path.Make();
+  rightClip.moveTo(startX, 0);
+  rightClip.lineTo(OUTPUT_WIDTH, 0);
+  rightClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  rightClip.lineTo(endX, OUTPUT_HEIGHT);
+  rightClip.cubicTo(cx2, cy2, cx1, cy1, startX, 0);
+  rightClip.close();
+
+  return { curve, leftClip, rightClip };
 }
 
 async function loadSkiaImage(uri: string) {
@@ -47,22 +51,44 @@ async function loadSkiaImage(uri: string) {
   return Skia.Image.MakeImageFromEncoded(data);
 }
 
-function drawCentered(
+/**
+ * 指定された領域に中央寄せで描画（Fill/Cover）
+ */
+/**
+ * 指定された領域に中央寄せで描画（Fill/Cover）
+ * zoom: 拡大率 (1.0 = ぴったり)
+ * offsetPctX: 中央からのずらし具合 (-1.0 〜 1.0)
+ */
+function drawImageToRect(
   canvas: ReturnType<NonNullable<ReturnType<typeof Skia.Surface.Make>>['getCanvas']>,
   image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>,
+  targetRect: { x: number; y: number; width: number; height: number },
   paint: ReturnType<typeof Skia.Paint>,
+  offsetPctX: number = 0,
+  zoom: number = 1.0,
 ) {
   const iW = image.width();
   const iH = image.height();
-  const scale = Math.max(OUTPUT_WIDTH / iW, OUTPUT_HEIGHT / iH);
+  const scale = Math.max(targetRect.width / iW, targetRect.height / iH) * zoom;
   const dW = iW * scale;
   const dH = iH * scale;
+  
+  // 基本の中央位置
+  let drawX = targetRect.x + (targetRect.width - dW) / 2;
+  const drawY = targetRect.y + (targetRect.height - dH) / 2;
+
+  // オフセット適用（余白がある場合のみ）
+  if (dW > targetRect.width) {
+    const maxOffset = (dW - targetRect.width) / 2;
+    drawX += maxOffset * offsetPctX;
+  }
+
   canvas.drawImageRect(
     image,
     { x: 0, y: 0, width: iW, height: iH },
     {
-      x: (OUTPUT_WIDTH - dW) / 2,
-      y: (OUTPUT_HEIGHT - dH) / 2,
+      x: drawX,
+      y: drawY,
       width: dW,
       height: dH,
     },
@@ -73,54 +99,119 @@ function drawCentered(
 export async function composePhotos(
   frontUri: string,
   backUri: string,
+  pattern: CompositePattern = 'diagonal',
 ): Promise<string> {
-  console.log('[composePhotos] start', { frontUri, backUri });
+  console.log(`[composePhotos] start pattern: ${pattern}`, { frontUri, backUri });
 
   const [frontImg, backImg] = await Promise.all([
     loadSkiaImage(frontUri),
     loadSkiaImage(backUri),
   ]);
-  if (!frontImg) throw new Error('frontImg の読み込みに失敗');
-  if (!backImg) throw new Error('backImg の読み込みに失敗');
-  console.log('[composePhotos] images loaded', frontImg.width(), frontImg.height());
+  if (!frontImg || !backImg) throw new Error('画像の読み込みに失敗しました');
 
   const surface = Skia.Surface.Make(OUTPUT_WIDTH, OUTPUT_HEIGHT);
   if (!surface) throw new Error('Surface の作成に失敗');
   const canvas = surface.getCanvas();
-
   const paint = Skia.Paint();
 
-  canvas.save();
-  canvas.clipPath(makeRightClip(), ClipOp.Intersect, true);
-  drawCentered(canvas, backImg, paint);
-  canvas.restore();
+  switch (pattern) {
+    case 'diagonal': {
+      const { curve, leftClip, rightClip } = makeDiagonalPaths();
+      const style = COLORS.diagonal;
 
-  canvas.save();
-  canvas.clipPath(makeLeftClip(), ClipOp.Intersect, true);
-  drawCentered(canvas, frontImg, paint);
-  canvas.restore();
+      // 背面写真 (右/後): 1.2倍ズームして右に寄せる
+      canvas.save();
+      canvas.clipPath(rightClip, ClipOp.Intersect, true);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
+      canvas.restore();
 
-  const linePaint = Skia.Paint();
-  linePaint.setStyle(PaintStyle.Stroke);
-  linePaint.setStrokeWidth(4);
-  linePaint.setColor(Skia.Color('#F3B8C8'));
-  linePaint.setAntiAlias(true);
-  canvas.drawPath(makeCurvePath(), linePaint);
+      // 前面写真 (左/前): 1.2倍ズームして左に寄せる
+      canvas.save();
+      canvas.clipPath(leftClip, ClipOp.Intersect, true);
+      drawImageToRect(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, -0.8, 1.2);
+      canvas.restore();
+
+      // 境界線
+      const linePaint = Skia.Paint();
+      linePaint.setStyle(PaintStyle.Stroke);
+      linePaint.setStrokeWidth(style.width);
+      linePaint.setColor(Skia.Color(style.color));
+      linePaint.setAlphaf(style.opacity);
+      linePaint.setAntiAlias(true);
+      canvas.drawPath(curve, linePaint);
+      break;
+    }
+
+    case 'circle': {
+      const style = COLORS.circle;
+      const circleRadius = OUTPUT_WIDTH * 0.25; 
+      const centerX = OUTPUT_WIDTH - circleRadius - 80;
+      const centerY = OUTPUT_HEIGHT - circleRadius - 160;
+
+      // 1. 背面写真を全画面に
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
+
+      // 2. 内側写真を円形でクリップして重ねる
+      canvas.save();
+      const circlePath = Skia.Path.Make();
+      circlePath.addCircle(centerX, centerY, circleRadius);
+      canvas.clipPath(circlePath, ClipOp.Intersect, true);
+      // 円形の中も中央寄せにする
+      drawImageToRect(canvas, frontImg, { 
+        x: centerX - circleRadius, 
+        y: centerY - circleRadius, 
+        width: circleRadius * 2, 
+        height: circleRadius * 2 
+      }, paint, 0, 1.1); // 少しだけズームして中央を強調
+      canvas.restore();
+
+      // 3. 円の枠線
+      const borderPaint = Skia.Paint();
+      borderPaint.setStyle(PaintStyle.Stroke);
+      borderPaint.setStrokeWidth(style.width);
+      borderPaint.setColor(Skia.Color(style.color));
+      borderPaint.setAlphaf(style.opacity);
+      borderPaint.setAntiAlias(true);
+      canvas.drawCircle(centerX, centerY, circleRadius, borderPaint);
+      break;
+    }
+
+    case 'split': {
+      const style = COLORS.split;
+      const dividerX = OUTPUT_WIDTH / 2;
+
+      // 左側: 背面写真
+      canvas.save();
+      canvas.clipRect({ x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, 0.4, 1.1);
+      canvas.restore();
+
+      // 右側: 前面写真
+      canvas.save();
+      canvas.clipRect({ x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
+      drawImageToRect(canvas, frontImg, { x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, -0.4, 1.1);
+      canvas.restore();
+
+      // 境界線
+      const dividerPaint = Skia.Paint();
+      dividerPaint.setStrokeWidth(style.width);
+      dividerPaint.setColor(Skia.Color(style.color));
+      dividerPaint.setAlphaf(style.opacity);
+      canvas.drawLine(dividerX, 0, dividerX, OUTPUT_HEIGHT, dividerPaint);
+      break;
+    }
+  }
 
   const snapshot = surface.makeImageSnapshot();
   const base64 = snapshot.encodeToBase64();
-  console.log('[composePhotos] encoded, length:', base64.length);
 
   const baseDirectory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
-  if (!baseDirectory) throw new Error('合成画像の保存先を取得できません');
-
   const dir = `${baseDirectory}lifecube/composed-preview/`;
   await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
   const outputPath = `${dir}photo_${Date.now()}.png`;
   await FileSystem.writeAsStringAsync(outputPath, base64, {
     encoding: FileSystem.EncodingType.Base64,
   });
-  console.log('[composePhotos] saved to', outputPath);
 
   return outputPath;
 }

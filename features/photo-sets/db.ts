@@ -121,3 +121,17 @@ export async function markPhotoSetDeleted(id: string, deletedAt = Date.now()) {
     id,
   );
 }
+
+export async function updatePhotoSetComposed(
+  id: string,
+  composedLocalUri: string,
+  pattern: CompositePattern,
+) {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE photo_sets SET composed_local_uri = ?, pattern = ? WHERE id = ?',
+    composedLocalUri,
+    pattern,
+    id,
+  );
+}

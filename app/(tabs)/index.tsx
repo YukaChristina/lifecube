@@ -20,8 +20,9 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { deleteSavedPhotoSet, savePhotoSet } from '@/features/photo-sets/save-photo-set';
-import type { PhotoSet } from '@/features/photo-sets/types';
+import type { PhotoSet, CompositePattern } from '@/features/photo-sets/types';
 import { composePhotos } from '@/utils/composePhoto';
+import { loadSettings } from '@/utils/settings';
 
 type Photos = { back: string; front: string };
 type CaptureStep = 'idle' | 'capturingFront';
@@ -44,6 +45,7 @@ export default function CameraScreen() {
   const [voiceUnavailable, setVoiceUnavailable] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [savedPhotoSet, setSavedPhotoSet] = useState<PhotoSet | null>(null);
+  const [activePattern, setActivePattern] = useState<CompositePattern>('diagonal');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
@@ -195,7 +197,12 @@ export default function CameraScreen() {
     setSavedPhotoSet(null);
     clearPreviewTimer();
     setIsComposing(true);
-    composePhotos(photos.front, photos.back)
+    
+    loadSettings().then(settings => {
+      const pattern = settings.defaultPattern;
+      setActivePattern(pattern);
+      return composePhotos(photos.front, photos.back, pattern);
+    })
       .then(uri => setComposedUri(uri))
       .catch((err) => Alert.alert('エラー', `画像の合成に失敗しました\n${err?.message ?? String(err)}`))
       .finally(() => setIsComposing(false));
@@ -217,7 +224,7 @@ export default function CameraScreen() {
         backUri: photos.back,
         frontUri: photos.front,
         composedUri: uri,
-        pattern: 'diagonal',
+        pattern: activePattern,
       });
 
       if (deleteRequestedSessionsRef.current.has(sessionId)) {

@@ -1,16 +1,29 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { loadSettings, saveSettings } from '@/utils/settings';
+import { CompositePattern } from '@/features/photo-sets/types';
 
-const PATTERN_PREVIEWS = [
-  { id: 'diagonal', enabled: true },
-  { id: 'circle', enabled: false },
-  { id: 'split', enabled: false },
-] as const;
+const PATTERNS: { id: CompositePattern; label: string }[] = [
+  { id: 'diagonal', label: '斜めカット' },
+  { id: 'circle', label: '円形くりぬき' },
+  { id: 'split', label: '左右分割' },
+];
 
 const SCREEN_PADDING = 20;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const [selectedPattern, setSelectedPattern] = useState<CompositePattern>('diagonal');
+
+  useEffect(() => {
+    loadSettings().then(s => setSelectedPattern(s.defaultPattern));
+  }, []);
+
+  const handleSelectPattern = async (pattern: CompositePattern) => {
+    setSelectedPattern(pattern);
+    await saveSettings({ defaultPattern: pattern });
+  };
 
   return (
     <ScrollView
@@ -34,33 +47,38 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>合成パターン設定</Text>
         <View style={styles.patternRow}>
-          {PATTERN_PREVIEWS.map(pattern => (
-            <View
-              key={pattern.id}
-              style={[
-                styles.patternCard,
-                pattern.enabled ? styles.patternCardActive : styles.patternCardDisabled,
-              ]}>
-              {pattern.id === 'diagonal' ? (
-                <>
-                  <View style={styles.diagonalPaneLeft} />
-                  <View style={styles.diagonalPaneRight} />
-                  <View style={styles.diagonalLine} />
-                </>
-              ) : pattern.id === 'circle' ? (
-                <>
-                  <View style={styles.circleBase} />
-                  <View style={styles.circleInset} />
-                </>
-              ) : (
-                <>
-                  <View style={styles.splitLeft} />
-                  <View style={styles.splitDivider} />
-                  <View style={styles.splitRight} />
-                </>
-              )}
-            </View>
-          ))}
+          {PATTERNS.map(pattern => {
+            const isActive = selectedPattern === pattern.id;
+            return (
+              <Pressable
+                key={pattern.id}
+                onPress={() => handleSelectPattern(pattern.id)}
+                style={[
+                  styles.patternCard,
+                  isActive ? styles.patternCardActive : styles.patternCardInactive,
+                ]}>
+                {pattern.id === 'diagonal' ? (
+                  <>
+                    <View style={styles.diagonalPaneLeft} />
+                    <View style={styles.diagonalPaneRight} />
+                    <View style={styles.diagonalLine} />
+                  </>
+                ) : pattern.id === 'circle' ? (
+                  <>
+                    <View style={styles.circleBase} />
+                    <View style={styles.circleInset} />
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.splitLeft} />
+                    <View style={styles.splitDivider} />
+                    <View style={styles.splitRight} />
+                  </>
+                )}
+                {isActive && <View style={styles.activeIndicator} />}
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -107,16 +125,26 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 9 / 16,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: 'hidden',
     backgroundColor: '#FFF9FB',
   },
   patternCardActive: {
-    borderColor: 'rgba(243, 184, 200, 0.78)',
+    borderColor: '#F3B8C8',
+    backgroundColor: '#FFF',
   },
-  patternCardDisabled: {
-    opacity: 0.34,
-    borderColor: 'rgba(111, 121, 118, 0.22)',
+  patternCardInactive: {
+    borderColor: 'rgba(111, 121, 118, 0.12)',
+    opacity: 0.6,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F3B8C8',
   },
   diagonalPaneLeft: {
     position: 'absolute',
@@ -124,7 +152,7 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: '58%',
-    backgroundColor: '#F3B8C8',
+    backgroundColor: 'rgba(243, 184, 200, 0.15)',
     transform: [{ skewX: '-12deg' }],
   },
   diagonalPaneRight: {
@@ -133,33 +161,32 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: '60%',
-    backgroundColor: '#C7E6DC',
+    backgroundColor: 'rgba(199, 230, 220, 0.15)',
     transform: [{ skewX: '-12deg' }],
   },
   diagonalLine: {
     position: 'absolute',
     top: '-10%',
     left: '48%',
-    width: 4,
+    width: 2,
     height: '120%',
-    borderRadius: 4,
     backgroundColor: '#F3B8C8',
     transform: [{ rotate: '12deg' }],
   },
   circleBase: {
     flex: 1,
-    backgroundColor: '#E8F2F8',
+    backgroundColor: 'rgba(200, 223, 242, 0.15)',
   },
   circleInset: {
     position: 'absolute',
-    right: 10,
-    bottom: 18,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 3,
-    borderColor: '#C7E6DC',
-    backgroundColor: '#F3B8C8',
+    right: 8,
+    bottom: 14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#C8DFF2',
+    backgroundColor: 'rgba(243, 184, 200, 0.2)',
   },
   splitLeft: {
     position: 'absolute',
@@ -167,14 +194,14 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: '50%',
-    backgroundColor: '#F3B8C8',
+    backgroundColor: 'rgba(243, 184, 200, 0.15)',
   },
   splitDivider: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: '48%',
-    width: 6,
+    width: 3,
     backgroundColor: '#C7E6DC',
   },
   splitRight: {
@@ -183,6 +210,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: '50%',
-    backgroundColor: '#C7E6DC',
+    backgroundColor: 'rgba(199, 230, 220, 0.15)',
   },
 });
