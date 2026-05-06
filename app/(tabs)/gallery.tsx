@@ -2,13 +2,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useCallback, useState } from 'react';
 import {
   Image,
+  Pressable,
   SectionList,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { listPhotoSets } from '@/features/photo-sets/db';
@@ -36,6 +38,7 @@ function chunkPhotoSets(photoSets: PhotoSet[]) {
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const [sections, setSections] = useState<PhotoSetGridSection[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -76,6 +79,10 @@ export default function GalleryScreen() {
     }, [loadPhotos]),
   );
 
+  const openPhotoSet = useCallback((photoSet: PhotoSet) => {
+    router.push(`/photo-set/${encodeURIComponent(photoSet.id)}` as Href);
+  }, [router]);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Text style={styles.title}>アルバム</Text>
@@ -103,18 +110,23 @@ export default function GalleryScreen() {
           renderItem={({ item }) => (
             <View style={styles.gridRow}>
               {item.map(photoSet => (
-                <Image
+                <Pressable
                   key={photoSet.id}
-                  source={{ uri: photoSet.composedLocalUri }}
-                  style={[
-                    styles.thumbnail,
+                  onPress={() => openPhotoSet(photoSet)}
+                  style={({ pressed }) => [
+                    styles.thumbnailButton,
                     {
                       width: thumbnailWidth,
                       height: thumbnailWidth * (16 / 9),
+                      opacity: pressed ? 0.78 : 1,
                     },
-                  ]}
-                  resizeMode="cover"
-                />
+                  ]}>
+                  <Image
+                    source={{ uri: photoSet.composedLocalUri }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                  />
+                </Pressable>
               ))}
             </View>
           )}
@@ -153,9 +165,14 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
     marginBottom: GRID_GAP,
   },
-  thumbnail: {
+  thumbnailButton: {
     borderRadius: 6,
     backgroundColor: '#F6EEF2',
+    overflow: 'hidden',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
   },
   empty: {
     flex: 1,
