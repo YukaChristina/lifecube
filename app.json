@@ -42,7 +42,8 @@
           "savePhotosPermission": "撮影した写真を保存するために使用します。",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

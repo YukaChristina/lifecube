@@ -1,50 +1,66 @@
-# Welcome to your Expo app 👋
+# LifeCube
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+LifeCube は、iOS / Android の両方で動作するインストール可能なモバイルアプリとして開発する Expo / React Native プロジェクトです。
 
-## Get started
+このリポジトリでは、Codex や Claude Code などの AI コーディングエージェントを通常の開発フローに組み込みます。人間の開発チームと AI エージェントの両方が、`DOCS/` 配下のドキュメントを参照しながら、プロジェクト方針・設計・開発規約を共有します。
 
-1. Install dependencies
+## 最初に読むもの
 
-   ```bash
-   npm install
-   ```
+実装や設計判断の前に、まず以下を確認してください。
 
-2. Start the app
+- `DOCS/README.md`
+- `DOCS/project-overview.md`
+- `DOCS/development-principles.md`
+- `DOCS/ai-development-workflow.md`
+- `DOCS/open-questions.md`
 
-   ```bash
-   npx expo start
-   ```
+`DOCS/` 配下のドキュメントは、人間にも AI にも読みやすいことを重視します。開発が進んだら、現状に合わせて短く整理し続けます。
 
-In the output, you'll find options to open the app in a
+## 現在の開発基盤
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- 対象プラットフォーム: iOS / Android
+- フレームワーク: Expo / React Native
+- 言語: TypeScript
+- ルーティング: Expo Router を標準採用
+- ビルド方針: development build と EAS Build を前提
+- 開発サーバー: `npx expo start --dev-client`
+- ネイティブ層: まずは Expo modules と既存ライブラリを使い、必要な場合のみネイティブ設定やネイティブコードを扱う
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## セットアップ
 
-## Get a fresh project
-
-When you're ready, run:
+依存関係をインストールします。
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 開発サーバー
 
-## Learn more
+development build に接続する開発サーバーを起動します。
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx expo start --dev-client
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Web プレビューが必要な場合だけ、補助的に以下を使います。
 
-## Join the community
+```bash
+npm run web
+```
 
-Join our community of developers creating universal apps.
+## ドキュメント規約
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- プロジェクト文書は `DOCS/` 配下に置きます。
+- Markdown 形式で書きます。
+- テキストファイルは UTF-8 BOMなしで保存します。
+- 見出しは安定させ、1ファイルを長くしすぎないようにします。
+- 表は比較が必要な場合にだけ使います。
+- ワイヤーフレーム、ディレクトリ構成、コマンド、プロンプト雛形は fenced code block で書きます。
+- 未決定事項は実装メモに埋め込まず、`DOCS/open-questions.md` に集約します。
+- チャットで説明した一般的な基礎知識は、原則として README や `DOCS/` に転記しません。プロジェクト固有の決定、運用ルール、実装方針だけを残します。
+
+## AI支援開発
+
+Codex、Claude Code、その他の AI エージェントに実装を依頼する場合は、関連する `DOCS/` ファイルを文脈として渡してください。
+
+このプロジェクトでは音声入力による指示が多く、認識違いが混ざる前提です。AI エージェントは、文脈から明らかな誤変換は補完し、実装や設計に影響する曖昧さがある場合だけ、簡潔に質問してください。
