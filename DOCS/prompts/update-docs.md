@@ -6,7 +6,7 @@
 あなたは LifeCube のドキュメントを更新しています。
 
 以下を読んでください。
-- README.md
+- AGENTS.md
 - DOCS/README.md
 - DOCS/project-overview.md
 - DOCS/development-principles.md

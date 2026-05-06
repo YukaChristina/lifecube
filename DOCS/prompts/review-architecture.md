@@ -6,11 +6,12 @@
 あなたは LifeCube のアーキテクチャをレビューしています。
 
 以下を読んでください。
-- README.md
+- AGENTS.md
 - DOCS/README.md
 - DOCS/project-overview.md
 - DOCS/architecture.md
 - DOCS/native-app-policy.md
+- DOCS/test-strategy.md
 - DOCS/open-questions.md
 
 レビュー対象:

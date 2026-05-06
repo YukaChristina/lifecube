@@ -4,6 +4,8 @@
 
 人間の開発者と AI コーディングエージェントの両方が読む前提で書きます。各ファイルは、通常の開発中に読み切れる長さを維持し、不安定な情報や未決定事項は `open-questions.md` に集約します。
 
+AI エージェント向けの作業入口は、リポジトリルートの `AGENTS.md` です。
+
 ## 読む順番
 
 多くの実装タスクでは、まず以下を読んでください。
@@ -11,13 +13,15 @@
 1. `project-overview.md`
 2. `development-principles.md`
 3. `ai-development-workflow.md`
-4. `open-questions.md`
+4. `test-strategy.md`
+5. `open-questions.md`
 
 その後、必要に応じて分野別の文書を読みます。
 
 - プロダクト方針: `product-direction.md`
 - アーキテクチャ: `architecture.md`
 - React Native / TypeScript 規約: `coding-guidelines.md`
+- テスト戦略: `test-strategy.md`
 - UI/UX詳細: `ui-ux/README.md`
 - UIデザイン方針: `ui-ux/design-guidelines.md`
 - ネイティブアプリとビルド方針: `native-app-policy.md`

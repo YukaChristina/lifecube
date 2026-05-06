@@ -12,8 +12,14 @@ app/
   (tabs)/
     _layout.tsx
     index.tsx
-    camera.tsx
     gallery.tsx
+    home.tsx
+features/
+  photo-sets/
+    types.ts
+    db.ts
+    storage.ts
+    save-photo-set.ts
 components/
 constants/
 hooks/
@@ -88,8 +94,10 @@ constants/cameraTheme.ts
   -> カメラを切り替え
   -> 2枚目の写真を撮影
   -> Skia でローカル画像合成
-  -> ローカルまたはメディアライブラリへ保存
-  -> ギャラリーに表示
+  -> アプリ内保存領域に外側、内側、合成後の3枚を保存
+  -> 合成後写真だけ端末の写真アプリへ保存
+  -> SQLite に写真セット情報を保存
+  -> アルバムに表示
 ```
 
 ## 状態管理
@@ -104,12 +112,13 @@ constants/cameraTheme.ts
 
 ## データ保存
 
-永続化方針はまだ選定していません。
+MVP の写真セット永続化には `expo-sqlite` を使います。
 
-現状のコードでは、ギャラリー的な動作にローカルファイルを使っています。今後の候補は以下です。
+現在の方針は以下です。
 
 - 生成メディア用の FileSystem 保存
-- 構造化されたローカルデータ用の SQLite
+- 写真セット管理用の SQLite
+- 合成後写真だけを端末の写真アプリにも保存
 - トークンや秘密情報用の SecureStore
 - 小さなアプリ設定用の MMKV または AsyncStorage
 - 複数端末での同期が必要な場合のバックエンド同期

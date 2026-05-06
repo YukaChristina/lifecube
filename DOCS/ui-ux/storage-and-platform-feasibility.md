@@ -46,6 +46,7 @@ photoStorage.android.ts
 - `expo-speech-recognition`
 - `@shopify/react-native-skia`
 - `expo-file-system`
+- `expo-sqlite`
 - `expo-router`
 - `expo-dev-client`
 
@@ -66,29 +67,33 @@ photoStorage.android.ts
 
 ## 推奨する保存方式
 
-MVP では、軽量なローカルDBを持つ設計を推奨します。
+MVP では、軽量なローカルDBとして `expo-sqlite` を使います。
 
 ここでのDBはサーバーDBではありません。端末内で写真セットの紐付けを管理するための小さなローカルDBです。
 
-画像本体は端末の写真アプリ、またはアプリ内ファイルとして保存し、DBには紐付け情報を保存します。
+画像本体はアプリ内ファイルとして保存し、DBには紐付け情報を保存します。合成後写真だけは、ユーザーが通常の写真として扱えるように端末の写真アプリにも保存します。
 
-保存する情報の例:
+MVP で保存する `PhotoSet`:
 
 ```text
-photo_set_id
-captured_at
-outer_photo_uri
-inner_photo_uri
-composite_photo_uri
-outer_photo_asset_id
-inner_photo_asset_id
-composite_photo_asset_id
-selected_composition
-default_composition_at_capture
-capture_order
-capture_delay_ms
-schema_version
+id
+createdAt
+backLocalUri
+frontLocalUri
+composedLocalUri
+composedAssetId
+pattern
+deletedAt
 ```
+
+`id` は外側写真、内側写真、合成後写真を1セットとして束ねる識別子です。`id` には時刻由来の文字列を含めますが、アルバムの日付順や日付グルーピングでは `createdAt` を正本として使います。
+
+各URIの意味:
+
+- `backLocalUri`: 外側カメラで撮った元写真のアプリ内保存先。
+- `frontLocalUri`: 内側カメラで撮った元写真のアプリ内保存先。
+- `composedLocalUri`: 合成後写真のアプリ内保存先。アルバム一覧と詳細表示の主表示に使う。
+- `composedAssetId`: 合成後写真を端末の写真アプリへ保存したときの asset id。写真アプリ側の追跡に使う。
 
 この方式にすると、以下を安定して実現できます。
 
@@ -138,20 +143,39 @@ composition: diagonal_soft
 
 ## 写真アプリ保存とアプリ内保存
 
-現時点では、端末の写真アプリにも保存したい意向があります。
+どちらも物理的には端末内に保存されますが、保存される領域と見え方が異なります。
 
-ただし、LifeCube のアルバム要件は通常の写真アプリだけでは満たしにくいため、アプリ側で写真セットの管理情報を持ちます。
+アプリ内保存は、LifeCube アプリ専用の保存領域に置く方式です。通常の写真アプリには見えませんが、LifeCube のアルバムでは安定して参照できます。
+
+端末の写真アプリ保存は、iOS の写真アプリや Android のフォト/ギャラリーから見える場所に保存する方式です。ユーザーの写真資産として扱いやすい一方、ユーザーが写真アプリ側で削除・編集でき、OS差も出やすくなります。
 
 推奨する考え方:
 
-- ユーザーにとっての写真資産は、端末の写真アプリにも残す。
+- LifeCube 内アルバム用には、外側写真、内側写真、合成後写真の3枚をアプリ内保存領域に保存する。
+- ユーザーにとっての成果物として、合成後写真だけを端末の写真アプリにも保存する。
 - LifeCube 固有のセット関係や合成設定は、アプリ内DBで管理する。
-- DBが壊れたり消えたりした場合の補助として、ファイル名やメタデータにも pairId を残す。
-- 撮影時には、外側写真、内側写真、合成後写真の3枚を保存する。
-- アプリ内で写真セットを削除する場合は、3枚をまとめて削除する。
+- アルバム一覧は、SQLite の `createdAt` と `composedLocalUri` を使って表示する。
+- DBが壊れたり消えたりした場合の補助として、将来的にはファイル名やメタデータにも pairId を残す。
+- アプリ内で写真セットを削除する場合は、DBの `deletedAt` を設定し、アプリ内保存の3枚をまとめて削除する。
+- 端末の写真アプリ側の削除は、OS確認ダイアログが絡むためMVP初期では行わない。
 - アルバム一覧は合成後写真が存在する写真セットだけを表示する。
 - 外側写真または内側写真だけが欠けた場合でも、合成後写真が存在すれば一覧には表示する。
 - 元写真が欠けている場合、オリジナル表示では欠けている写真を表示できない状態として扱う。
+
+現在のアプリ内保存先:
+
+```text
+FileSystem.documentDirectory/lifecube/photo-sets/{photoSetId}/back.jpg
+FileSystem.documentDirectory/lifecube/photo-sets/{photoSetId}/front.jpg
+FileSystem.documentDirectory/lifecube/photo-sets/{photoSetId}/composed.png
+```
+
+端末写真アプリへの保存:
+
+```text
+composed.png のみ MediaLibrary.createAssetAsync() で保存する。
+返ってきた asset.id を composedAssetId としてDBに保存する。
+```
 
 ## 実機確認の優先順
 
@@ -159,7 +183,7 @@ composition: diagonal_soft
 2. Android 実機で「シャッター」音声検知が継続動作するか。
 3. 外側カメラ撮影後、内側カメラへ切り替えて 0.5 秒程度で撮れるか。
 4. 撮影後の合成画像生成が端末性能的に許容範囲か。
-5. 写真アプリへ保存した合成画像を再取得できるか。
+5. 合成後写真が端末の写真アプリへ保存されるか。
 6. 外側、内側、合成後の3画像を1セットとしてローカルDBに保存し、アルバムに出せるか。
 
 ## 初期実装の判断
@@ -170,7 +194,9 @@ composition: diagonal_soft
 - 音声検知撮影を残す。
 - 外側から内側への連続撮影を安定させる。
 - 撮影後は斜めカット合成を表示する。
-- ローカルDBで写真セットを管理する。
+- `expo-sqlite` のローカルDBで写真セットを管理する。
+- アプリ内保存領域に外側、内側、合成後の3枚を保存する。
+- 端末の写真アプリには合成後写真だけを保存する。
 - アルバム一覧には合成後写真だけを表示する。
 
 DBなし復元やAIによる最適合成は、MVP の初期範囲には入れません。

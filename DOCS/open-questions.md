@@ -30,14 +30,13 @@
 
 ### データ保存
 
-MVP では、写真セットの紐付けと合成パターン保存のために軽量なローカルDBを使う方針です。
+MVP では、写真セットの紐付けと合成パターン保存のために `expo-sqlite` のローカルDBを使う方針です。
 
-画像本体は端末の写真アプリにも保存する意向がありますが、LifeCube 固有のアルバム表示はアプリ内DBで管理します。詳細は `ui-ux/storage-and-platform-feasibility.md` を参照してください。
+画像本体は、LifeCube 内アルバム用にアプリ内保存領域へ保存します。端末の写真アプリには合成後写真だけを保存します。詳細は `ui-ux/storage-and-platform-feasibility.md` を参照してください。
 
 確認したいこと:
 
-- ローカルDBとして SQLite を使うか、別の軽量ストレージを使うか。
-- iOS の Photos asset id と Android の MediaStore uri/id をどの形で保存するか。
+- iOS の Photos asset id と Android の MediaStore uri/id が、`composedAssetId` としてどの程度安定して扱えるか。
 - ユーザーが写真アプリ側で画像を削除、編集、移動したときにどう扱うか。
 - アプリ再インストール後も残すべきデータがあるか。
 - プライベートまたは機微なデータを扱うか。
