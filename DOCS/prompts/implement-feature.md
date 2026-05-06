@@ -6,11 +6,12 @@ AI エージェントに機能実装を依頼するときに使うプロンプ�
 あなたは LifeCube リポジトリで作業しています。
 
 ファイルを編集する前に、以下を読んでください。
-- README.md
+- AGENTS.md
 - DOCS/README.md
 - DOCS/project-overview.md
 - DOCS/development-principles.md
 - DOCS/ai-development-workflow.md
+- DOCS/test-strategy.md
 - DOCS/open-questions.md
 
 タスク:
@@ -28,5 +29,6 @@ AI エージェントに機能実装を依頼するときに使うプロンプ�
 - 変更したファイル
 - 変更した挙動
 - 実行した確認
+- 再ビルドや実機確認の要否
 - 残っているリスクや未決定事項
 ```

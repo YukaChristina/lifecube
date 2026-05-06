@@ -41,6 +41,7 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 - `@shopify/react-native-skia` によるローカル画像合成
 - `expo-file-system` によるローカルファイル操作
 - `expo-media-library` によるメディアライブラリ連携
+- `expo-sqlite` による写真セット管理用のローカルDB
 
 ## 現在のビルド設定
 
@@ -51,6 +52,8 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 - `production`: auto-increment 有効
 
 `app.json` には EAS project id が設定されています。
+
+`expo-sqlite` を追加したため、既存の development build を端末に入れたままではSQLite連携を実機確認できない可能性があります。実機確認前に development build を作り直します。
 
 ## 現在見えているリスク
 

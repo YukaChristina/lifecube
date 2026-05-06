@@ -17,6 +17,7 @@ LifeCube は、iOS / Android の両方にインストールして動作するア
 - 音声認識
 - メディアライブラリ
 - ファイルシステム
+- SQLite
 - 画像合成
 
 ## Development Build 前提
@@ -59,6 +60,10 @@ production
 - iOS / Android のネイティブ設定に影響する変更をした
 
 通常の JS / TS / UI の変更だけであれば、毎回 EAS Build を実行する必要はありません。
+
+`expo-sqlite` のような Expo native module を新しく追加した場合、すでに端末へインストール済みの development build にはそのネイティブコードが含まれていません。そのため、Android / iOS 実機で確認するには development build の作り直しが必要です。
+
+一方で、すでに development build に含まれているネイティブモジュールを使った JS / TS 側の実装変更だけであれば、通常は開発サーバーの再読み込みで確認できます。
 
 ## 実機確認の前提
 
