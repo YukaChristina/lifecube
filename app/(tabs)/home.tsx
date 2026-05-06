@@ -1,88 +1,186 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useRouter } from 'expo-router';
+const PATTERN_PREVIEWS = [
+  { id: 'diagonal', enabled: true },
+  { id: 'circle', enabled: false },
+  { id: 'split', enabled: false },
+] as const;
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <TouchableOpacity style={styles.voiceTestButton} onPress={() => router.push('/voice-test')}>
-          <ThemedText style={styles.voiceTestButtonText}>音声テスト画面へ</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: insets.top + 18,
+          paddingBottom: Math.max(insets.bottom, 18) + 28,
+        },
+      ]}>
+      <Text style={styles.title}>ホーム</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>アプリ説明</Text>
+        <Text style={styles.bodyText}>
+          LifeCubeは、家族の会話や反応の中で生まれる思い出を、外側と内側の写真セットとして自然に残すカメラです。
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>合成パターン設定</Text>
+        <View style={styles.patternRow}>
+          {PATTERN_PREVIEWS.map(pattern => (
+            <View
+              key={pattern.id}
+              style={[
+                styles.patternCard,
+                pattern.enabled ? styles.patternCardActive : styles.patternCardDisabled,
+              ]}>
+              {pattern.id === 'diagonal' ? (
+                <>
+                  <View style={styles.diagonalPaneLeft} />
+                  <View style={styles.diagonalPaneRight} />
+                  <View style={styles.diagonalLine} />
+                </>
+              ) : pattern.id === 'circle' ? (
+                <>
+                  <View style={styles.circleBase} />
+                  <View style={styles.circleInset} />
+                </>
+              ) : (
+                <>
+                  <View style={styles.splitLeft} />
+                  <View style={styles.splitDivider} />
+                  <View style={styles.splitRight} />
+                </>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>課金設定</Text>
+        <Text style={styles.bodyText}>準備中</Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFCFD',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  content: {
+    paddingHorizontal: 18,
+    gap: 22,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  title: {
+    color: '#3F3941',
+    fontSize: 26,
+    fontWeight: '700',
   },
-  voiceTestButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
+  section: {
+    gap: 10,
   },
-  voiceTestButtonText: {
-    color: '#fff',
+  sectionTitle: {
+    color: '#4D4650',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
+  },
+  bodyText: {
+    color: '#6D646B',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  patternRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  patternCard: {
+    flex: 1,
+    aspectRatio: 9 / 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+    backgroundColor: '#F6EEF2',
+  },
+  patternCardActive: {
+    borderColor: 'rgba(243, 184, 200, 0.92)',
+  },
+  patternCardDisabled: {
+    opacity: 0.36,
+    borderColor: 'rgba(109, 100, 107, 0.24)',
+  },
+  diagonalPaneLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '58%',
+    backgroundColor: '#F7D7E0',
+    transform: [{ skewX: '-12deg' }],
+  },
+  diagonalPaneRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '60%',
+    backgroundColor: '#E8F2F8',
+    transform: [{ skewX: '-12deg' }],
+  },
+  diagonalLine: {
+    position: 'absolute',
+    top: '-10%',
+    left: '48%',
+    width: 4,
+    height: '120%',
+    borderRadius: 4,
+    backgroundColor: '#F3B8C8',
+    transform: [{ rotate: '12deg' }],
+  },
+  circleBase: {
+    flex: 1,
+    backgroundColor: '#E8F2F8',
+  },
+  circleInset: {
+    position: 'absolute',
+    right: 10,
+    bottom: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 3,
+    borderColor: '#C8DFF2',
+    backgroundColor: '#F7D7E0',
+  },
+  splitLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '50%',
+    backgroundColor: '#F7D7E0',
+  },
+  splitDivider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '48%',
+    width: 6,
+    backgroundColor: '#C7E6DC',
+  },
+  splitRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '50%',
+    backgroundColor: '#E8F2F8',
   },
 });

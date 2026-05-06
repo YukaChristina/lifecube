@@ -4,6 +4,8 @@
 
 LifeCube は、iOS / Android の両方で動作するインストール可能なモバイルアプリとして開発します。
 
+家族で過ごす時間の中にある会話、表情、反応を、外側と内側の写真セットとして自然に残すことを目指します。
+
 現在の基盤は Expo / React Native です。言語は TypeScript を前提とし、開発は AI コーディングエージェントの支援を大きく取り入れて進めます。
 
 ## 現在の技術スタック
@@ -27,12 +29,12 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 - `app/_layout.tsx`: ルート Stack レイアウト
 - `app/(tabs)/_layout.tsx`: タブレイアウト
 - `app/(tabs)/index.tsx`: 起動直後に開くカメラ画面
-- `app/(tabs)/gallery.tsx`: アルバムタブに接続する暫定ギャラリー画面
-- `app/(tabs)/home.tsx`: ホームタブに接続する暫定ホーム画面
+- `app/(tabs)/gallery.tsx`: 写真セットDBを使うアルバム一覧画面
+- `app/(tabs)/home.tsx`: アプリ説明、合成パターン設定、課金設定入口を置くホーム画面
+- `app/photo-set/[id].tsx`: アルバム詳細画面
 - `app/modal.tsx`: モーダル画面
-- `app/voice-test.tsx`: 音声認識テスト画面
 
-下部タブは `カメラ / アルバム / ホーム` の3つです。旧 `explore` 画面と旧 `camera.tsx` ルートは削除済みです。
+下部タブは `カメラ / アルバム / ホーム` の3つです。旧 `explore` 画面、旧 `camera.tsx` ルート、開発用の `voice-test` 画面は削除済みです。
 
 現在コード上で確認できる機能領域は以下です。
 

@@ -376,6 +376,16 @@ export default function CameraScreen() {
     );
   };
 
+  const renderCameraWarmup = () => (
+    <View style={styles.warmupContainer}>
+      <View style={styles.backdropFrame}>
+        <View style={styles.backdropCircle} />
+        <View style={styles.backdropLine} />
+        <View style={[styles.backdropLine, styles.backdropLineShort]} />
+      </View>
+    </View>
+  );
+
   // ── プレビュー画面 ────────────────────────────────────────────
   if (photos) {
     return (
@@ -417,8 +427,16 @@ export default function CameraScreen() {
     );
   }
 
-  if (!permission?.granted || !cameraActive) {
+  if (!permission) {
+    return renderCameraWarmup();
+  }
+
+  if (!permission.granted) {
     return renderPermissionPrompt();
+  }
+
+  if (!cameraActive) {
+    return renderCameraWarmup();
   }
 
   return (
@@ -471,6 +489,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9F4F6',
+    paddingHorizontal: 28,
+  },
+  warmupContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
