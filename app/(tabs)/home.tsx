@@ -7,6 +7,8 @@ const PATTERN_PREVIEWS = [
   { id: 'split', enabled: false },
 ] as const;
 
+const SCREEN_PADDING = 20;
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
@@ -73,27 +75,27 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFCFD',
+    backgroundColor: '#F8FBFA',
   },
   content: {
-    paddingHorizontal: 18,
-    gap: 22,
+    paddingHorizontal: SCREEN_PADDING,
+    gap: 24,
   },
   title: {
-    color: '#3F3941',
-    fontSize: 26,
+    color: '#44504D',
+    fontSize: 28,
     fontWeight: '700',
   },
   section: {
     gap: 10,
   },
   sectionTitle: {
-    color: '#4D4650',
-    fontSize: 16,
+    color: '#44504D',
+    fontSize: 15,
     fontWeight: '800',
   },
   bodyText: {
-    color: '#6D646B',
+    color: '#6F7976',
     fontSize: 14,
     lineHeight: 22,
   },
@@ -107,14 +109,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
-    backgroundColor: '#F6EEF2',
+    backgroundColor: '#FFF9FB',
   },
   patternCardActive: {
-    borderColor: 'rgba(243, 184, 200, 0.92)',
+    borderColor: 'rgba(243, 184, 200, 0.78)',
   },
   patternCardDisabled: {
-    opacity: 0.36,
-    borderColor: 'rgba(109, 100, 107, 0.24)',
+    opacity: 0.34,
+    borderColor: 'rgba(111, 121, 118, 0.22)',
   },
   diagonalPaneLeft: {
     position: 'absolute',
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: '58%',
-    backgroundColor: '#F7D7E0',
+    backgroundColor: '#F3B8C8',
     transform: [{ skewX: '-12deg' }],
   },
   diagonalPaneRight: {
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: '60%',
-    backgroundColor: '#E8F2F8',
+    backgroundColor: '#C7E6DC',
     transform: [{ skewX: '-12deg' }],
   },
   diagonalLine: {
@@ -156,8 +158,8 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 3,
-    borderColor: '#C8DFF2',
-    backgroundColor: '#F7D7E0',
+    borderColor: '#C7E6DC',
+    backgroundColor: '#F3B8C8',
   },
   splitLeft: {
     position: 'absolute',
@@ -165,7 +167,7 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: '50%',
-    backgroundColor: '#F7D7E0',
+    backgroundColor: '#F3B8C8',
   },
   splitDivider: {
     position: 'absolute',
@@ -181,6 +183,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: '50%',
-    backgroundColor: '#E8F2F8',
+    backgroundColor: '#C7E6DC',
   },
 });

@@ -18,7 +18,7 @@ import { groupPhotoSetsByDate } from '@/features/photo-sets/group-photo-sets';
 import type { PhotoSet } from '@/features/photo-sets/types';
 
 const NUM_COLUMNS = 3;
-const HORIZONTAL_PADDING = 16;
+const HORIZONTAL_PADDING = 20;
 const GRID_GAP = 6;
 
 type PhotoSetGridSection = {
@@ -139,25 +139,25 @@ export default function GalleryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFCFD',
+    backgroundColor: '#F8FBFA',
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#3F3941',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
+    color: '#44504D',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 18,
+    paddingBottom: 18,
   },
   listContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    gap: 6,
+    gap: 8,
   },
   sectionTitle: {
-    color: '#6D646B',
-    fontSize: 13,
+    color: '#6F7976',
+    fontSize: 14,
     fontWeight: '700',
-    marginTop: 12,
+    marginTop: 14,
     marginBottom: 8,
   },
   gridRow: {
@@ -166,8 +166,10 @@ const styles = StyleSheet.create({
     marginBottom: GRID_GAP,
   },
   thumbnailButton: {
-    borderRadius: 6,
-    backgroundColor: '#F6EEF2',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#DDEDEA',
+    backgroundColor: '#FFF9FB',
     overflow: 'hidden',
   },
   thumbnail: {
@@ -178,13 +180,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFCFD',
+    backgroundColor: '#F8FBFA',
     paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#6D646B',
+    color: '#6F7976',
     textAlign: 'center',
   },
 });
