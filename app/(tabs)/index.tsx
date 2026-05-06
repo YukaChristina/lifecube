@@ -1,5 +1,5 @@
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -7,6 +7,8 @@ import {
   Alert,
   Image,
   Linking,
+  Pressable,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,10 +19,15 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
+import { deleteSavedPhotoSet, savePhotoSet } from '@/features/photo-sets/save-photo-set';
+import type { PhotoSet } from '@/features/photo-sets/types';
 import { composePhotos } from '@/utils/composePhoto';
 
 type Photos = { back: string; front: string };
 type CaptureStep = 'idle' | 'capturingFront';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+const PREVIEW_CLOSE_DELAY_MS = 4000;
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
@@ -35,12 +42,44 @@ export default function CameraScreen() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [savedPhotoSet, setSavedPhotoSet] = useState<PhotoSet | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
   const isCapturingRef = useRef(false);
   const cameraActiveRef = useRef(false);
   const speechPermissionGrantedRef = useRef(false);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewSessionRef = useRef(0);
+  const deleteRequestedSessionsRef = useRef<Set<number>>(new Set());
+
+  const clearPreviewTimer = useCallback(() => {
+    if (!previewTimerRef.current) return;
+    clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = null;
+  }, []);
+
+  const resetToCamera = useCallback(() => {
+    clearPreviewTimer();
+    setPhotos(null);
+    setComposedUri(null);
+    setSaveStatus('idle');
+    setSavedPhotoSet(null);
+    setFacing('back');
+    setCameraActive(true);
+  }, [clearPreviewTimer]);
+
+  const schedulePreviewClose = useCallback(() => {
+    clearPreviewTimer();
+    previewTimerRef.current = setTimeout(() => {
+      resetToCamera();
+    }, PREVIEW_CLOSE_DELAY_MS);
+  }, [clearPreviewTimer, resetToCamera]);
+
+  useEffect(() => {
+    return () => clearPreviewTimer();
+  }, [clearPreviewTimer]);
 
   const requestSpeechPermission = useCallback(async () => {
     try {
@@ -151,12 +190,63 @@ export default function CameraScreen() {
       setComposedUri(null);
       return;
     }
+    previewSessionRef.current += 1;
+    setSaveStatus('idle');
+    setSavedPhotoSet(null);
+    clearPreviewTimer();
     setIsComposing(true);
     composePhotos(photos.front, photos.back)
       .then(uri => setComposedUri(uri))
       .catch((err) => Alert.alert('エラー', `画像の合成に失敗しました\n${err?.message ?? String(err)}`))
       .finally(() => setIsComposing(false));
-  }, [photos]);
+  }, [clearPreviewTimer, photos]);
+
+  const saveCurrentPhotoSet = useCallback(async (uri: string, sessionId: number) => {
+    if (!photos) {
+      setSaveStatus('error');
+      return;
+    }
+
+    setSaveStatus('saving');
+    try {
+      if (deleteRequestedSessionsRef.current.has(sessionId)) {
+        return;
+      }
+
+      const photoSet = await savePhotoSet({
+        backUri: photos.back,
+        frontUri: photos.front,
+        composedUri: uri,
+        pattern: 'diagonal',
+      });
+
+      if (deleteRequestedSessionsRef.current.has(sessionId)) {
+        await deleteSavedPhotoSet(photoSet);
+        return;
+      }
+
+      if (previewSessionRef.current === sessionId) {
+        setSavedPhotoSet(photoSet);
+        setSaveStatus('saved');
+      }
+    } catch {
+      if (previewSessionRef.current === sessionId) {
+        setSaveStatus('error');
+      }
+    } finally {
+      if (
+        previewSessionRef.current === sessionId &&
+        !deleteRequestedSessionsRef.current.has(sessionId)
+      ) {
+        schedulePreviewClose();
+      }
+    }
+  }, [photos, schedulePreviewClose]);
+
+  useEffect(() => {
+    if (!composedUri || saveStatus !== 'idle') return;
+    void saveCurrentPhotoSet(composedUri, previewSessionRef.current);
+  }, [composedUri, saveCurrentPhotoSet, saveStatus]);
 
   useSpeechRecognitionEvent('start', () => {
     setVoiceListening(true);
@@ -220,30 +310,40 @@ export default function CameraScreen() {
     return () => clearTimeout(timer);
   }, [captureStep, backPhotoUri]);
 
-  const handleSave = async () => {
-    if (!composedUri) return;
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('権限が必要です', '設定から写真へのアクセスを許可してください');
-      return;
-    }
-    await MediaLibrary.saveToLibraryAsync(composedUri);
-    Alert.alert('保存しました', '写真アプリに保存されました', [
-      {
-        text: 'OK',
-        onPress: () => {
-          setPhotos(null);
-          setComposedUri(null);
-          setCameraActive(true);
-        },
-      },
-    ]);
+  const handleShare = async () => {
+    const shareUri = savedPhotoSet?.composedLocalUri ?? composedUri;
+    if (!shareUri) return;
+    clearPreviewTimer();
+    await Share.share({
+      message: 'LifeCube',
+      url: shareUri,
+    });
   };
 
-  const handleRetake = () => {
-    setPhotos(null);
-    setComposedUri(null);
-    setCameraActive(true);
+  const deleteLocalUri = async (uri: string | null | undefined) => {
+    if (!uri) return;
+    try {
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+    } catch {
+      // Best-effort cleanup. Camera reset should not be blocked by file cleanup.
+    }
+  };
+
+  const handleDeletePreview = async () => {
+    const sessionId = previewSessionRef.current;
+    deleteRequestedSessionsRef.current.add(sessionId);
+    clearPreviewTimer();
+
+    if (savedPhotoSet) {
+      await deleteSavedPhotoSet(savedPhotoSet);
+    }
+
+    await Promise.all([
+      deleteLocalUri(composedUri),
+      deleteLocalUri(photos?.back),
+      deleteLocalUri(photos?.front),
+    ]);
+    resetToCamera();
   };
 
   const renderPermissionPrompt = () => {
@@ -280,28 +380,39 @@ export default function CameraScreen() {
   if (photos) {
     return (
       <View style={styles.previewContainer}>
-        <Text style={styles.title}>撮影結果</Text>
-
         {isComposing ? (
           <View style={styles.composingBox}>
             <ActivityIndicator size="large" color="#F3B8C8" />
             <Text style={styles.composingText}>画像を合成中...</Text>
           </View>
         ) : composedUri ? (
-          <Image source={{ uri: composedUri }} style={styles.composedImage} />
-        ) : null}
+          <>
+            <Image source={{ uri: composedUri }} style={styles.previewImage} resizeMode="cover" />
+            <Pressable style={styles.previewTapLayer} onPress={resetToCamera} />
 
-        <View style={styles.previewButtons}>
-          <TouchableOpacity style={styles.retakeButton} onPress={handleRetake}>
-            <Text style={styles.retakeText}>撮り直す</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.saveButton, (!composedUri || isComposing) && styles.disabledButton]}
-            onPress={handleSave}
-            disabled={!composedUri || isComposing}>
-            <Text style={styles.saveText}>保存する</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={[
+              styles.previewInstructionBar,
+              { paddingTop: Math.max(insets.top, 18) + 10 },
+            ]} pointerEvents="none">
+              <Text style={styles.previewInstructionText}>画面をタップでカメラへ戻る</Text>
+            </View>
+
+            <View style={[
+              styles.previewActions,
+              {
+                right: insets.right + 18,
+                bottom: Math.max(insets.bottom, 18) + 32,
+              },
+            ]}>
+              <TouchableOpacity style={styles.previewActionButton} onPress={handleShare}>
+                <Text style={styles.previewActionText}>Instagramで共有</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteActionButton} onPress={handleDeletePreview}>
+                <Text style={styles.deleteActionText}>削除する</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : null}
       </View>
     );
   }
@@ -527,16 +638,7 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    backgroundColor: '#111',
   },
   composingBox: {
     flex: 1,
@@ -548,40 +650,65 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
   },
-  composedImage: {
+  previewImage: {
+    ...StyleSheet.absoluteFillObject,
     width: '100%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    marginTop: 16,
+    height: '100%',
   },
-  previewButtons: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 32,
+  previewTapLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
-  retakeButton: {
-    backgroundColor: '#666',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+  previewInstructionBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 2,
+    alignItems: 'center',
+    paddingBottom: 10,
+    backgroundColor: 'rgba(255,250,252,0.24)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,250,252,0.42)',
   },
-  retakeText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  previewInstructionText: {
+    color: 'rgba(77,70,80,0.82)',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+  previewActions: {
+    position: 'absolute',
+    zIndex: 3,
+    alignItems: 'stretch',
+    gap: 18,
   },
-  disabledButton: {
-    opacity: 0.4,
+  previewActionButton: {
+    minWidth: 154,
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(243,184,200,0.70)',
+    backgroundColor: 'rgba(255,250,252,0.76)',
   },
-  saveText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  previewActionText: {
+    color: '#4D4650',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  deleteActionButton: {
+    minWidth: 154,
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(200,184,196,0.58)',
+    backgroundColor: 'rgba(255,250,252,0.66)',
+  },
+  deleteActionText: {
+    color: '#7A6570',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
