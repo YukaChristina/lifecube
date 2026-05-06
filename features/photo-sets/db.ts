@@ -93,6 +93,26 @@ export async function listPhotoSets() {
   return rows.map(rowToPhotoSet);
 }
 
+export async function getPhotoSetById(id: string) {
+  const db = await getDb();
+  const row = await db.getFirstAsync<PhotoSetRow>(
+    `SELECT
+      id,
+      created_at,
+      back_local_uri,
+      front_local_uri,
+      composed_local_uri,
+      composed_asset_id,
+      pattern,
+      deleted_at
+    FROM photo_sets
+    WHERE id = ? AND deleted_at IS NULL`,
+    id,
+  );
+
+  return row ? rowToPhotoSet(row) : null;
+}
+
 export async function markPhotoSetDeleted(id: string, deletedAt = Date.now()) {
   const db = await getDb();
   await db.runAsync(

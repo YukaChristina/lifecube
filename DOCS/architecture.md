@@ -9,6 +9,8 @@ app/
   _layout.tsx
   modal.tsx
   voice-test.tsx
+  photo-set/
+    [id].tsx
   (tabs)/
     _layout.tsx
     index.tsx
@@ -20,6 +22,7 @@ features/
     db.ts
     storage.ts
     save-photo-set.ts
+    group-photo-sets.ts
 components/
 constants/
 hooks/
