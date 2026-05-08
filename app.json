@@ -23,6 +23,10 @@
       "package": "com.yukachristina.lifecube",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#f9efd7"
+      },
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]
