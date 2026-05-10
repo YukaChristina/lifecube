@@ -19,6 +19,7 @@ AI エージェント向けの作業入口は、リポジトリルートの `AGE
 その後、必要に応じて分野別の文書を読みます。
 
 - プロダクト方針: `product-direction.md`
+- 直近開発計画: `near-term-development-plan.md`
 - アーキテクチャ: `architecture.md`
 - React Native / TypeScript 規約: `coding-guidelines.md`
 - テスト戦略: `test-strategy.md`
