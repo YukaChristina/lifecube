@@ -96,6 +96,7 @@ development
 preview
   environment: preview
   channel: preview
+  android.buildType: apk
   APP_VARIANT=preview
 
 production
@@ -149,6 +150,22 @@ Android でも同じ profile 名を使います。Android の preview submit は
 
 `eas submit --profile preview` を使う場合は、submit 先が Bundle ID `com.yukachristina.lifecube` の App Store Connect アプリであることを確認します。`lifecube-dev` / `com.yukachristina.lifecube.dev` へ submit しません。
 
+Android の preview 配布は Firebase App Distribution を前提にします。`eas build --platform android --profile preview` では APK を作るため、`eas.json` の preview profile に Android だけ `buildType: "apk"` を明示します。
+
+```text
+iOS preview
+  eas build --platform ios --profile preview
+  eas submit --platform ios --profile preview
+  TestFlight へ配布
+
+Android preview
+  eas build --platform android --profile preview
+  Firebase App Distribution へ APK をアップロード
+  eas submit は使わない
+```
+
+Android preview の Firebase App Distribution では、Firebase の Android App ID、配布グループ、リリースノートを指定して APK をアップロードします。Firebase 用の service account key などの秘密情報は Git 管理しません。
+
 ## Development Build を作り直すタイミング
 
 以下の変更では、development build の作り直しが必要になる可能性があります。
@@ -194,9 +211,9 @@ UIだけの確認はシミュレーターでも進められますが、MVP の�
 配布・デプロイの全体像はまだ未完成です。環境名は `development` / `preview` / `production` に統一しますが、今後決める必要があるものは以下です。
 
 - App Store Connect の設定
-- Google Play Console の設定
+- Firebase App Distribution の配布グループとアップロード手順
+- Google Play Console を使う場合の設定
 - EAS Update を導入するタイミング
-- Android の preview 配布の流れ
 - production submit の承認フロー
 - バックエンドホスティングが必要な場合の基盤
 - リリースバージョン管理の流れ

@@ -53,6 +53,14 @@ TestFlight submit 前に確認すること:
 - App Store Connect の submit 先が `com.yukachristina.lifecube` のアプリであること。
 - `lifecube-dev` / `com.yukachristina.lifecube.dev` に submit していないこと。
 
+Android preview 配布前に確認すること:
+
+- `eas build --platform android --profile preview` で作った APK であること。
+- `eas.json` の preview profile に `android.buildType: apk` があること。
+- Expo config の `android.package` が `com.yukachristina.lifecube` であること。
+- Firebase App Distribution の upload 先が `com.yukachristina.lifecube` の Android app であること。
+- Firebase service account key などの秘密情報を Git 管理していないこと。
+
 ## 変更範囲別の確認
 
 カメラ、音声認識、権限、写真保存、SQLite、メディアライブラリに関わる変更では、Android / iOS の実機確認が必要になる可能性があります。
