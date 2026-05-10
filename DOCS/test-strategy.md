@@ -53,6 +53,14 @@ TestFlight submit 前に確認すること:
 - App Store Connect の submit 先が `com.yukachristina.lifecube` のアプリであること。
 - `lifecube-dev` / `com.yukachristina.lifecube.dev` に submit していないこと。
 
+Android preview 配布前に確認すること:
+
+- `eas build --platform android --profile preview` で作った APK であること。
+- `eas.json` の preview profile に `android.buildType: apk` があること。
+- Expo config の `android.package` が `com.yukachristina.lifecube` であること。
+- Firebase App Distribution の upload 先が `com.yukachristina.lifecube` の Android app であること。
+- Firebase service account key などの秘密情報を Git 管理していないこと。
+
 ## 変更範囲別の確認
 
 カメラ、音声認識、権限、写真保存、SQLite、メディアライブラリに関わる変更では、Android / iOS の実機確認が必要になる可能性があります。
@@ -62,10 +70,18 @@ TestFlight submit 前に確認すること:
 - 起動直後にカメラ画面が開くか。
 - 「シャッター」音声で撮影できるか。
 - 外側カメラから内側カメラへ切り替わるか。
+- 背面カメラのみモードで、前面カメラへ切り替わらず1枚写真として保存されるか。
 - 撮影後プレビューが表示されるか。
+- 撮影後プレビューの4秒進捗バーが表示され、4秒経過でカメラへ戻るか。
 - アプリ内保存領域に写真セットが保存されるか。
-- 合成後写真が端末の写真アプリに保存されるか。
+- 前後カメラ撮影では合成後写真が端末の写真アプリに保存されるか。
+- 背面カメラのみ撮影では背面写真が LifeCube アルバムと端末の写真アプリに保存されるか。
 - SQLite に写真セット情報が保存されるか。
+- 縦向きでは9:16、横向きでは16:9の成果物画像が生成、表示、保存されるか。
+- 横向き写真のアルバムサムネイルが横長比率のまま表示されるか。
+- カメラ画面で待機しても画面スリープしないか。
+- LifeCube 前面利用中に他アプリ音楽を併用できるか。
+- バックグラウンド音声検知を検証する場合、OS制約、常駐通知、バッテリー影響が許容範囲か。
 - 権限拒否時の案内が破綻しないか。
 
 UI変更では、対象画面の手動確認を行い、確認できなかった端末や画面サイズがあれば報告します。
@@ -79,6 +95,8 @@ UI変更では、対象画面の手動確認を行い、確認できなかった
 - `deletedAt` がある写真セットの除外
 - DB row から `PhotoSet` への変換
 - 合成パターン選択ロジック
+- 撮影モードに応じた保存対象の判定ロジック
+- 縦横の出力サイズ判定ロジック
 - 音声トリガー語の判定ロジック
 
 MVP中は、テストのために大きな設計変更を先行しません。自然に純粋関数へ切り出せるところから追加します。

@@ -15,10 +15,23 @@ LifeCube は、iOS / Android の両方にインストールして動作するア
 - カメラ
 - マイク
 - 音声認識
+- スリープ抑止
+- 音楽再生との共存
+- バックグラウンド音声検知の実現性検証
 - メディアライブラリ
 - ファイルシステム
 - SQLite
 - 画像合成
+
+## カメラ待機と音声まわりの方針
+
+LifeCube は「シャッター」という音声が出るまで長く待機する使い方があります。カメラ画面で待機している間に端末がスリープすると中核体験が成立しにくいため、カメラ画面ではスリープ抑止を行います。
+
+まずは Expo module を優先し、必要であれば `expo-keep-awake` の利用を検討します。新しい native module を追加する場合は development build の作り直しが必要になる可能性があります。
+
+車内利用では、LifeCube を前面で使いながら他アプリの音楽を流すケースがあります。音楽併用は、まず LifeCube 前面利用中に他アプリ音楽を止めない挙動を目標にします。音声認識の精度やOS差があるため、iOS / Android 実機で確認します。
+
+LifeCube をバックグラウンドに置いた状態で音声検知する機能は、技術検証タスクとして扱います。Android で常駐通知が必要になる場合は許容します。ただし、iOS / Android ともにバックグラウンドのマイクやカメラ利用にはOS制約が強いため、実現性が低い場合は採用しない判断も候補にします。
 
 ## Development Build 前提
 
@@ -96,6 +109,7 @@ development
 preview
   environment: preview
   channel: preview
+  android.buildType: apk
   APP_VARIANT=preview
 
 production
@@ -145,9 +159,25 @@ production
   submit: eas submit --platform ios --profile production
 ```
 
-Android でも同じ profile 名を使います。Android の preview submit は Google Play 側の内部テスト運用が整ってから行います。
-
 `eas submit --profile preview` を使う場合は、submit 先が Bundle ID `com.yukachristina.lifecube` の App Store Connect アプリであることを確認します。`lifecube-dev` / `com.yukachristina.lifecube.dev` へ submit しません。
+
+Android の preview 配布は Firebase App Distribution を前提にします。`eas build --platform android --profile preview` では APK を作るため、`eas.json` の preview profile に Android だけ `buildType: "apk"` を明示します。
+
+```text
+iOS preview
+  eas build --platform ios --profile preview
+  eas submit --platform ios --profile preview
+  TestFlight へ配布
+
+Android preview
+  eas build --platform android --profile preview
+  Firebase App Distribution へ APK をアップロード
+  eas submit は使わない
+```
+
+Android preview の Firebase App Distribution では、Firebase の Android App ID、配布グループ、リリースノートを指定して APK をアップロードします。Firebase 用の service account key などの秘密情報は Git 管理しません。
+
+Google Play への submit は production または将来の Google Play テスト運用を設計した後に扱います。現時点の Android preview では `eas submit --platform android --profile preview` を使いません。
 
 ## Development Build を作り直すタイミング
 
@@ -159,6 +189,8 @@ Android でも同じ profile 名を使います。Android の preview submit は
 - `eas.json` の build profile を変更した
 - Expo SDK や native module を更新した
 - iOS / Android のネイティブ設定に影響する変更をした
+- スリープ抑止、音楽併用、バックグラウンド音声検知のために native module、plugin、権限、background mode を追加または変更した
+- 顔検出ライブラリを追加した
 
 通常の JS / TS / UI の変更だけであれば、毎回 EAS Build を実行する必要はありません。
 
@@ -173,6 +205,9 @@ Android でも同じ profile 名を使います。Android の preview submit は
 シミュレーターやWebプレビューだけで判断しない領域:
 
 - 「シャッター」音声検知の継続動作
+- 画面スリープせずにカメラ待機を継続できるか
+- LifeCube 前面利用中に他アプリ音楽を併用できるか
+- バックグラウンド音声検知を試す場合、OS制約、常駐通知、バッテリー影響が許容範囲か
 - 外側カメラから内側カメラへの切り替え時間
 - 切り替え直後の写真品質
 - 写真アプリ保存後の再取得
@@ -194,9 +229,9 @@ UIだけの確認はシミュレーターでも進められますが、MVP の�
 配布・デプロイの全体像はまだ未完成です。環境名は `development` / `preview` / `production` に統一しますが、今後決める必要があるものは以下です。
 
 - App Store Connect の設定
-- Google Play Console の設定
+- Firebase App Distribution の配布グループとアップロード手順
+- Google Play Console を使う場合の設定
 - EAS Update を導入するタイミング
-- Android の preview 配布の流れ
 - production submit の承認フロー
 - バックエンドホスティングが必要な場合の基盤
 - リリースバージョン管理の流れ

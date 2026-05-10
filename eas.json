@@ -22,20 +22,12 @@
       "autoIncrement": true,
       "environment": "preview",
       "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_IMAGE_UTILS_NO_SHARP": "1",
-        "EAS_BUILD_DISABLE_NPM_CACHE": "1",
-        "EXPO_NO_DOTENV": "1"
-      }
-    },
-    "firebase": {
-      "distribution": "internal",
-      "autoIncrement": true,
-      "env": {
-        "APP_VARIANT": "production",
-        "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
         "EAS_BUILD_DISABLE_NPM_CACHE": "1",
         "EXPO_NO_DOTENV": "1"

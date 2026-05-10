@@ -62,7 +62,7 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 ## 現在見えているリスク
 
 - ソースコードと設定ファイルの一部の日本語文字列が文字化けしています。本格的な UI 開発、権限文言の確認、本番ビルド前には修正が必要です。
-- EAS Update、Android の preview 配布、production submit の承認フローはまだ設計されていません。
+- EAS Update、production submit の承認フロー、Firebase App Distribution の詳細な配布グループとアップロード担当はまだ設計されていません。
 - 状態管理、データ保存、バックエンド、UIデザイン方針は意図的に未決定です。
 
 ## 現在の開発コミュニケーション
