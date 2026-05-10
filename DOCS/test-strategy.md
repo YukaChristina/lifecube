@@ -24,6 +24,26 @@ npx tsc --noEmit
 
 ドキュメントのみの変更では、上記の実行は必須ではありません。ただし、コードや設定に影響する変更を含む場合は実行します。
 
+## 環境設定変更時の確認
+
+`app.config.ts`、`app.json`、`eas.json`、`.env`、bundle identifier、package name、scheme、EAS channel を変更した場合は、通常の lint / typecheck に加えて以下を確認します。
+
+```bash
+npm run lint
+npx tsc --noEmit
+npx expo config
+```
+
+確認すること:
+
+- development の bundle identifier / package name が `.dev` になっていること。
+- preview / production が本番用 bundle identifier / package name を使っていること。
+- `extra.eas.projectId` が既存 projectId のままであること。
+- `.env.local` が Git 管理対象になっていないこと。
+- `EXPO_PUBLIC_*` に秘密情報が含まれていないこと。
+
+bundle identifier、native plugin、権限、EAS profile を変更した場合は、development build の作り直しが必要になる可能性があります。
+
 ## 変更範囲別の確認
 
 カメラ、音声認識、権限、写真保存、SQLite、メディアライブラリに関わる変更では、Android / iOS の実機確認が必要になる可能性があります。

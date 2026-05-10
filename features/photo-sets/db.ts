@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-import type { PhotoSet, PhotoSetRow } from './types';
+import type { CompositePattern, PhotoSet, PhotoSetRow } from './types';
 
 const DB_NAME = 'lifecube.db';
 

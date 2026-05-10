@@ -25,6 +25,31 @@ AI エージェントに作業を依頼する場合は、まず `AGENTS.md` を�
 - 開発サーバー: `npx expo start --dev-client`
 - ネイティブ層: まずは Expo modules と既存ライブラリを使い、必要な場合のみネイティブ設定やネイティブコードを扱う
 
+## Expo / EAS 環境
+
+推奨する EAS CLI / Node 環境:
+
+```bash
+eas-cli/18.11.0 win32-x64 node-v22.15.0
+```
+
+環境は Expo / EAS 標準に合わせて以下の3つを使います。
+
+| 環境 | 用途 |
+| --- | --- |
+| development | 開発者の手元確認 |
+| preview | テストユーザー確認。iOS では TestFlight 配布 |
+| production | 本番配布 |
+
+ローカル開発では `.env.local` を使います。`.env.local` は Git 管理しません。
+
+```env
+APP_VARIANT=development
+EXPO_PUBLIC_APP_ENV=development
+```
+
+詳細な環境切替、bundle identifier、EAS profile の方針は `DOCS/native-app-policy.md` を参照してください。
+
 ## セットアップ
 
 依存関係をインストールします。

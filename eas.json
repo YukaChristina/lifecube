@@ -1,33 +1,47 @@
 {
   "cli": {
-    "version": ">= 18.7.0",
+    "version": "18.11.0",
     "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-"env": {
+      "environment": "development",
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_APP_ENV": "development",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
         "EAS_BUILD_DISABLE_NPM_CACHE": "1"
       }
     },
     "preview": {
-      "distribution": "internal",
+      "distribution": "store",
+      "autoIncrement": true,
+      "environment": "preview",
+      "channel": "preview",
       "env": {
+        "APP_VARIANT": "preview",
+        "EXPO_PUBLIC_APP_ENV": "preview",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
         "EAS_BUILD_DISABLE_NPM_CACHE": "1"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
+      "channel": "production",
       "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
         "EAS_BUILD_DISABLE_NPM_CACHE": "1"
       }
     }
   },
   "submit": {
+    "preview": {},
     "production": {}
   }
 }

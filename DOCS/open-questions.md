@@ -6,14 +6,20 @@
 
 ### デプロイ方針
 
-現在はローカルの Expo 開発コマンドで確認しており、EAS profile はありますが、実際の配布・デプロイまでの流れは未定義です。
+以下は暫定決定済みです。
+
+- 環境名は Expo / EAS 標準に合わせて `development` / `preview` / `production` に統一する。
+- `preview` はテストユーザー確認用の環境とし、iOS では TestFlight 配布に使う。
+- `development` は `preview` / `production` と別の bundle identifier / package name にする。
+- 環境切替は `.env.local`、EAS Environment Variables、`APP_VARIANT`、`app.config.ts` を使う。
 
 確認したいこと:
 
-- 最初の配布目標は、内部配布、TestFlight、Google Play 内部テスト、公開ストア配布のどれか。
 - iOS と Android の配布設計を同時に進めるか。
-- Expo Application Services を、両プラットフォームの build / submit の標準経路にするか。
 - Apple Developer Program と Google Play Console の設定を誰が担当するか。
+- EAS Update をいつ導入するか。
+- Android の preview 配布をどう運用するか。
+- production submit の承認フローをどうするか。
 
 ### バックエンドとクラウド基盤
 
