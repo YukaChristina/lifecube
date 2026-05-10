@@ -37,12 +37,21 @@ npx expo config
 確認すること:
 
 - development の bundle identifier / package name が `.dev` になっていること。
+- development の icon が `assets/images/icon-dev.png` になっていること。
 - preview / production が本番用 bundle identifier / package name を使っていること。
+- preview / production の icon が `assets/images/icon.png` になっていること。
 - `extra.eas.projectId` が既存 projectId のままであること。
 - `.env.local` が Git 管理対象になっていないこと。
 - `EXPO_PUBLIC_*` に秘密情報が含まれていないこと。
 
-bundle identifier、native plugin、権限、EAS profile を変更した場合は、development build の作り直しが必要になる可能性があります。
+bundle identifier、native plugin、権限、icon、EAS profile を変更した場合は、development build の作り直しが必要になる可能性があります。
+
+TestFlight submit 前に確認すること:
+
+- `eas build --platform ios --profile preview` で作った build であること。
+- Expo config の `ios.bundleIdentifier` が `com.yukachristina.lifecube` であること。
+- App Store Connect の submit 先が `com.yukachristina.lifecube` のアプリであること。
+- `lifecube-dev` / `com.yukachristina.lifecube.dev` に submit していないこと。
 
 ## 変更範囲別の確認
 
