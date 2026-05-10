@@ -13,7 +13,8 @@
         "APP_VARIANT": "development",
         "EXPO_PUBLIC_APP_ENV": "development",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
-        "EAS_BUILD_DISABLE_NPM_CACHE": "1"
+        "EAS_BUILD_DISABLE_NPM_CACHE": "1",
+        "EXPO_NO_DOTENV": "1"
       }
     },
     "preview": {
@@ -25,7 +26,8 @@
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_APP_ENV": "preview",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
-        "EAS_BUILD_DISABLE_NPM_CACHE": "1"
+        "EAS_BUILD_DISABLE_NPM_CACHE": "1",
+        "EXPO_NO_DOTENV": "1"
       }
     },
     "production": {
@@ -36,7 +38,8 @@
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_IMAGE_UTILS_NO_SHARP": "1",
-        "EAS_BUILD_DISABLE_NPM_CACHE": "1"
+        "EAS_BUILD_DISABLE_NPM_CACHE": "1",
+        "EXPO_NO_DOTENV": "1"
       }
     }
   },
