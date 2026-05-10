@@ -56,19 +56,24 @@ development
   ios.bundleIdentifier: com.yukachristina.lifecube.dev
   android.package: com.yukachristina.lifecube.dev
   scheme: lifecube-dev
+  icon: assets/images/icon-dev.png
 
 preview
   ios.bundleIdentifier: com.yukachristina.lifecube
   android.package: com.yukachristina.lifecube
   scheme: lifecube
+  icon: assets/images/icon.png
 
 production
   ios.bundleIdentifier: com.yukachristina.lifecube
   android.package: com.yukachristina.lifecube
   scheme: lifecube
+  icon: assets/images/icon.png
 ```
 
 preview と production は同じ本番用 bundle identifier を使います。これは、iOS の TestFlight が App Store Connect 上の同一アプリに紐づくためです。preview と production を同一端末で別アプリとして共存させる設計は、現時点では採用しません。
+
+development は preview / production と取り違えないように、アプリ名とアイコンを分けます。development 用アイコンは `assets/images/icon-dev.png` を使います。app icon は 1024 x 1024 の PNG を基準に用意します。
 
 環境切替は `APP_VARIANT` を基準にし、`app.config.ts` で Expo config を動的に生成します。`app.json` に環境別の固定値を増やさない方針とします。
 
@@ -114,12 +119,43 @@ eas-cli/18.11.0 win32-x64 node-v22.15.0
 
 `eas build --platform all --auto-submit` は、ストア提出まで進む可能性があるため、通常の開発確認では実行しません。
 
+## Build / Submit の運用
+
+TestFlight 用の preview 環境は、ローカルの `.env.local` を書き換えて選ぶのではなく、EAS Build profile で選びます。
+
+```bash
+eas build --platform ios --profile preview
+```
+
+この profile により `APP_VARIANT=preview` が渡され、`app.config.ts` が本番系 bundle identifier の `com.yukachristina.lifecube` を生成します。
+
+development build はローカル開発用であり、App Store Connect / TestFlight には submit しません。
+
+```text
+development
+  build: eas build --platform ios --profile development
+  submit: しない
+
+preview
+  build: eas build --platform ios --profile preview
+  submit: eas submit --platform ios --profile preview
+
+production
+  build: eas build --platform ios --profile production
+  submit: eas submit --platform ios --profile production
+```
+
+Android でも同じ profile 名を使います。Android の preview submit は Google Play 側の内部テスト運用が整ってから行います。
+
+`eas submit --profile preview` を使う場合は、submit 先が Bundle ID `com.yukachristina.lifecube` の App Store Connect アプリであることを確認します。`lifecube-dev` / `com.yukachristina.lifecube.dev` へ submit しません。
+
 ## Development Build を作り直すタイミング
 
 以下の変更では、development build の作り直しが必要になる可能性があります。
 
 - ネイティブ依存関係を追加または更新した
 - `app.json` / `app.config.ts` の plugin、権限、scheme、bundle identifier、package name などを変更した
+- `app.config.ts` の icon / adaptiveIcon を変更した
 - `eas.json` の build profile を変更した
 - Expo SDK や native module を更新した
 - iOS / Android のネイティブ設定に影響する変更をした

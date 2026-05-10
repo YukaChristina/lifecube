@@ -27,6 +27,10 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
   const isDevelopment = appVariant === "development";
   const appId = isDevelopment ? `${PRODUCTION_APP_ID}.dev` : PRODUCTION_APP_ID;
   const scheme = isDevelopment ? "lifecube-dev" : "lifecube";
+  const icon = isDevelopment
+    ? "./assets/images/icon-dev.png"
+    : "./assets/images/icon.png";
+  const adaptiveIconBackgroundColor = isDevelopment ? "#dbeafe" : "#f9efd7";
 
   return {
     name: isDevelopment ? "lifecube-dev" : "lifecube",
@@ -36,7 +40,7 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
     scheme,
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
-    icon: "./assets/images/icon.png",
+    icon,
     ios: {
       bundleIdentifier: appId,
       supportsTablet: true,
@@ -56,8 +60,8 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       adaptiveIcon: {
-        foregroundImage: "./assets/images/icon.png",
-        backgroundColor: "#f9efd7",
+        foregroundImage: icon,
+        backgroundColor: adaptiveIconBackgroundColor,
       },
       permissions: ["android.permission.RECORD_AUDIO"],
     },
