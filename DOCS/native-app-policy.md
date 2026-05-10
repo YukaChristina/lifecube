@@ -146,8 +146,6 @@ production
   submit: eas submit --platform ios --profile production
 ```
 
-Android でも同じ profile 名を使います。Android の preview submit は Google Play 側の内部テスト運用が整ってから行います。
-
 `eas submit --profile preview` を使う場合は、submit 先が Bundle ID `com.yukachristina.lifecube` の App Store Connect アプリであることを確認します。`lifecube-dev` / `com.yukachristina.lifecube.dev` へ submit しません。
 
 Android の preview 配布は Firebase App Distribution を前提にします。`eas build --platform android --profile preview` では APK を作るため、`eas.json` の preview profile に Android だけ `buildType: "apk"` を明示します。
@@ -165,6 +163,8 @@ Android preview
 ```
 
 Android preview の Firebase App Distribution では、Firebase の Android App ID、配布グループ、リリースノートを指定して APK をアップロードします。Firebase 用の service account key などの秘密情報は Git 管理しません。
+
+Google Play への submit は production または将来の Google Play テスト運用を設計した後に扱います。現時点の Android preview では `eas submit --platform android --profile preview` を使いません。
 
 ## Development Build を作り直すタイミング
 
