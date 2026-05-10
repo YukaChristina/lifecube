@@ -50,17 +50,19 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 `eas.json` には以下の build profile があります。
 
 - `development`: development client、内部配布
-- `preview`: 内部配布
+- `preview`: テストユーザー確認。iOS では TestFlight 配布
 - `production`: auto-increment 有効
 
-`app.json` には EAS project id が設定されています。
+環境名は Expo / EAS 標準に合わせて `development` / `preview` / `production` に統一します。TestFlight は `preview` 環境の iOS 配布手段として扱います。
+
+`app.config.ts` には EAS project id が設定されています。`APP_VARIANT` によって環境別の bundle identifier / package name を切り替えます。
 
 `expo-sqlite` を追加したため、既存の development build を端末に入れたままではSQLite連携を実機確認できない可能性があります。実機確認前に development build を作り直します。
 
 ## 現在見えているリスク
 
 - ソースコードと設定ファイルの一部の日本語文字列が文字化けしています。本格的な UI 開発、権限文言の確認、本番ビルド前には修正が必要です。
-- ローカルの Expo 開発環境から、実際の配布・デプロイまでの流れはまだ設計されていません。
+- EAS Update、Android の preview 配布、production submit の承認フローはまだ設計されていません。
 - 状態管理、データ保存、バックエンド、UIデザイン方針は意図的に未決定です。
 
 ## 現在の開発コミュニケーション

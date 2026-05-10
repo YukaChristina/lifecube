@@ -33,6 +33,15 @@ AI エージェントは以下のように対応します。
 - 実装内容が分岐する曖昧さがある場合だけ、簡潔に質問します。
 - 軽微な言い間違いや誤変換だけで作業を止めません。
 
+## 環境と秘密情報
+
+- 環境名は Expo / EAS 標準に合わせて `development` / `preview` / `production` に統一します。
+- TestFlight は `preview` 環境の iOS 配布手段として扱い、独立した環境名にはしません。
+- ローカル開発の環境値は `.env.local` を使い、Git 管理しません。
+- `EXPO_PUBLIC_*` はアプリに埋め込まれ、ユーザーから見える前提で扱います。
+- API secret、トークン、秘密鍵、管理者用URLなどの秘密情報を `EXPO_PUBLIC_*` やアプリバンドルに含めません。
+- Expo projectId、bundle identifier、EAS profile、EAS channel、submit 設定を変更する場合は、影響範囲を明示してから変更します。
+
 ## ドキュメント運用
 
 - `DOCS/` は現役の開発に使う文書として保ち、古い記録置き場にしません。
