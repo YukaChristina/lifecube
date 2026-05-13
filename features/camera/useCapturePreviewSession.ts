@@ -16,6 +16,7 @@ const PREVIEW_CLOSE_DELAY_MS = 4000;
 type UseCapturePreviewSessionOptions = {
   onPreviewStart: () => void;
   onReturnToCamera: () => void;
+  backOnly?: boolean;
 };
 
 async function deleteLocalUri(uri: string | null | undefined) {
@@ -30,13 +31,15 @@ async function deleteLocalUri(uri: string | null | undefined) {
 export function useCapturePreviewSession({
   onPreviewStart,
   onReturnToCamera,
+  backOnly = false,
 }: UseCapturePreviewSessionOptions) {
   const [photos, setPhotos] = useState<CapturedPhotoPair | null>(null);
   const [composedUri, setComposedUri] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [savedPhotoSet, setSavedPhotoSet] = useState<PhotoSet | null>(null);
-  const activePatternRef = useRef<CompositePattern>('diagonal');
+  const [closeScheduledAt, setCloseScheduledAt] = useState<number | null>(null);
+  const activePatternRef = useRef<CompositePattern>('circle');
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewSessionRef = useRef(0);
   const deleteRequestedSessionsRef = useRef<Set<number>>(new Set());
@@ -54,11 +57,13 @@ export function useCapturePreviewSession({
     setComposedUri(null);
     setSaveStatus('idle');
     setSavedPhotoSet(null);
+    setCloseScheduledAt(null);
     onReturnToCamera();
   }, [clearPreviewTimer, onReturnToCamera]);
 
   const schedulePreviewClose = useCallback(() => {
     clearPreviewTimer();
+    setCloseScheduledAt(Date.now());
     previewTimerRef.current = setTimeout(() => {
       returnToCamera();
     }, PREVIEW_CLOSE_DELAY_MS);
@@ -85,11 +90,18 @@ export function useCapturePreviewSession({
     setSavedPhotoSet(null);
     setComposedUri(null);
     clearPreviewTimer();
+
+    if (backOnly) {
+      setIsComposing(false);
+      setComposedUri(photos.back);
+      return;
+    }
+
     setIsComposing(true);
 
     loadSettings().then(settings => {
       activePatternRef.current = settings.defaultPattern;
-      return composePhotos(photos.front, photos.back, settings.defaultPattern);
+      return composePhotos(photos.front, photos.back, settings.defaultPattern, photos.orientation);
     })
       .then(uri => {
         if (
@@ -112,7 +124,7 @@ export function useCapturePreviewSession({
           setIsComposing(false);
         }
       });
-  }, [clearPreviewTimer, photos]);
+  }, [backOnly, clearPreviewTimer, photos]);
 
   const saveCurrentPhotoSet = useCallback(async (uri: string, sessionId: number) => {
     if (!photos) {
@@ -189,6 +201,7 @@ export function useCapturePreviewSession({
   }, [clearPreviewTimer, composedUri, photos?.back, photos?.front, returnToCamera, savedPhotoSet]);
 
   return {
+    closeScheduledAt,
     composedUri,
     deletePreview,
     isComposing,

@@ -1,3 +1,7 @@
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { useCallback, useEffect, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
+
 import { CameraLiveView } from '@/components/camera/CameraLiveView';
 import { CameraPermissionPrompt } from '@/components/camera/CameraPermissionPrompt';
 import { CameraWarmup } from '@/components/camera/CameraWarmup';
@@ -6,8 +10,29 @@ import { useCameraPermissionFlow } from '@/features/camera/useCameraPermissionFl
 import { useCapturePreviewSession } from '@/features/camera/useCapturePreviewSession';
 import { useDualCameraCapture } from '@/features/camera/useDualCameraCapture';
 import { useShutterVoiceTrigger } from '@/features/camera/useShutterVoiceTrigger';
+import { loadSettings, saveSettings } from '@/utils/settings';
 
 export default function CameraScreen() {
+  const { width, height } = useWindowDimensions();
+  const orientation = width > height ? 'landscape' : 'portrait';
+
+  const [backOnly, setBackOnly] = useState(false);
+
+  useEffect(() => {
+    void activateKeepAwakeAsync();
+    return () => { void deactivateKeepAwake(); };
+  }, []);
+
+  useEffect(() => {
+    loadSettings().then(s => setBackOnly(s.cameraMode === 'back-only'));
+  }, []);
+
+  const toggleCameraMode = useCallback(async () => {
+    const next = !backOnly;
+    setBackOnly(next);
+    await saveSettings({ cameraMode: next ? 'back-only' : 'dual' });
+  }, [backOnly]);
+
   const {
     activateCamera,
     cameraActive,
@@ -17,6 +42,7 @@ export default function CameraScreen() {
   } = useCameraPermissionFlow();
 
   const {
+    closeScheduledAt,
     composedUri,
     deletePreview,
     isComposing,
@@ -27,6 +53,7 @@ export default function CameraScreen() {
   } = useCapturePreviewSession({
     onPreviewStart: deactivateCamera,
     onReturnToCamera: activateCamera,
+    backOnly,
   });
 
   const {
@@ -36,6 +63,8 @@ export default function CameraScreen() {
     takePhoto,
   } = useDualCameraCapture({
     onCaptured: startPreview,
+    backOnly,
+    orientation,
   });
 
   const voice = useShutterVoiceTrigger({
@@ -50,6 +79,7 @@ export default function CameraScreen() {
       <CapturePreview
         isComposing={isComposing}
         composedUri={composedUri}
+        closeScheduledAt={closeScheduledAt}
         onResetToCamera={returnToCamera}
         onShare={share}
         onDelete={deletePreview}
@@ -81,7 +111,9 @@ export default function CameraScreen() {
       isCapturing={isCapturing}
       voiceListening={voice.listening}
       voiceUnavailable={voice.unavailable}
+      backOnly={backOnly}
       onTakePhoto={takePhoto}
+      onToggleCameraMode={toggleCameraMode}
     />
   );
 }

@@ -5,15 +5,21 @@ import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
 type UseDualCameraCaptureOptions = {
   onCaptured: (photos: CapturedPhotoPair) => void;
+  backOnly?: boolean;
+  orientation?: 'portrait' | 'landscape';
 };
 
-export function useDualCameraCapture({ onCaptured }: UseDualCameraCaptureOptions) {
+export function useDualCameraCapture({ onCaptured, backOnly = false, orientation = 'portrait' }: UseDualCameraCaptureOptions) {
   const [facing, setFacing] = useState<CameraType>('back');
   const [captureStep, setCaptureStep] = useState<DualCameraCaptureStep>('idle');
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const isCapturingRef = useRef(false);
+  const backOnlyRef = useRef(backOnly);
+  backOnlyRef.current = backOnly;
+  const orientationRef = useRef(orientation);
+  orientationRef.current = orientation;
 
   useEffect(() => {
     isCapturingRef.current = isCapturing;
@@ -42,10 +48,16 @@ export function useDualCameraCapture({ onCaptured }: UseDualCameraCaptureOptions
       return;
     }
 
+    if (backOnlyRef.current) {
+      onCaptured({ back: backResult.uri, front: backResult.uri, orientation: orientationRef.current });
+      resetCaptureState();
+      return;
+    }
+
     setBackPhotoUri(backResult.uri);
     setFacing('front');
     setCaptureStep('capturingFront');
-  }, [resetCaptureState]);
+  }, [onCaptured, resetCaptureState]);
 
   useEffect(() => {
     if (captureStep !== 'capturingFront' || !backPhotoUri) return;
@@ -58,7 +70,7 @@ export function useDualCameraCapture({ onCaptured }: UseDualCameraCaptureOptions
 
       const frontResult = await cameraRef.current.takePictureAsync();
       if (frontResult?.uri) {
-        onCaptured({ back: backPhotoUri, front: frontResult.uri });
+        onCaptured({ back: backPhotoUri, front: frontResult.uri, orientation: orientationRef.current });
       }
 
       resetCaptureState();

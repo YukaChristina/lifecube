@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
+  Animated,
   Image,
   Pressable,
   StyleSheet,
@@ -9,9 +10,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const PREVIEW_CLOSE_DELAY_MS = 4000;
+
 type CapturePreviewProps = {
   isComposing: boolean;
   composedUri: string | null;
+  closeScheduledAt: number | null;
   onResetToCamera: () => void;
   onShare: () => void;
   onDelete: () => void;
@@ -20,17 +24,35 @@ type CapturePreviewProps = {
 export function CapturePreview({
   isComposing,
   composedUri,
+  closeScheduledAt,
   onResetToCamera,
   onShare,
   onDelete,
 }: CapturePreviewProps) {
   const insets = useSafeAreaInsets();
+  const progressAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (closeScheduledAt == null) {
+      progressAnim.stopAnimation();
+      progressAnim.setValue(1);
+      return;
+    }
+    const elapsed = Date.now() - closeScheduledAt;
+    const remaining = Math.max(0, PREVIEW_CLOSE_DELAY_MS - elapsed);
+    progressAnim.setValue(remaining / PREVIEW_CLOSE_DELAY_MS);
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: remaining,
+      useNativeDriver: false,
+    }).start();
+  }, [closeScheduledAt, progressAnim]);
 
   return (
     <View style={styles.container}>
       {isComposing ? (
         <View style={styles.composingBox}>
-          <ActivityIndicator size="large" color="#F3B8C8" />
+          <Animated.View style={styles.composingSpinner} />
           <Text style={styles.composingText}>画像を合成中...</Text>
         </View>
       ) : composedUri ? (
@@ -62,6 +84,19 @@ export function CapturePreview({
               <Text style={styles.previewActionText}>削除する</Text>
             </TouchableOpacity>
           </View>
+
+          <Animated.View
+            style={[
+              styles.progressBar,
+              {
+                width: progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+            pointerEvents="none"
+          />
         </>
       ) : null}
     </View>
@@ -78,6 +113,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
+  },
+  composingSpinner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: 'rgba(243,184,200,0.30)',
+    borderTopColor: '#F3B8C8',
   },
   composingText: {
     fontSize: 16,
@@ -128,5 +171,13 @@ const styles = StyleSheet.create({
     color: '#4D4650',
     fontSize: 14,
     fontWeight: '800',
+  },
+  progressBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: 8,
+    backgroundColor: 'rgba(243,184,200,0.85)',
+    zIndex: 4,
   },
 });

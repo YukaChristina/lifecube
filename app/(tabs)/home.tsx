@@ -131,6 +131,7 @@ const styles = StyleSheet.create({
   },
   patternCardActive: {
     borderColor: '#F3B8C8',
+    borderWidth: 3.5,
     backgroundColor: '#FFF',
   },
   patternCardInactive: {

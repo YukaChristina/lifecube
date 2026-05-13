@@ -1,4 +1,5 @@
 import {
+  AVAudioSessionCategoryOptions,
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
@@ -60,6 +61,14 @@ export function useShutterVoiceTrigger({
         lang: 'ja-JP',
         interimResults: true,
         continuous: true,
+        iosCategory: {
+          category: 'playAndRecord',
+          categoryOptions: [
+            AVAudioSessionCategoryOptions.mixWithOthers,
+            AVAudioSessionCategoryOptions.allowBluetooth,
+          ],
+          mode: 'measurement',
+        },
       });
     } catch {
       setListening(false);
@@ -69,6 +78,9 @@ export function useShutterVoiceTrigger({
   const stop = useCallback(() => {
     try {
       ExpoSpeechRecognitionModule.stop();
+      ExpoSpeechRecognitionModule.setAudioSessionActiveIOS(false, {
+        notifyOthersOnDeactivation: true,
+      });
     } catch {
       // The speech module can throw if it is already stopped on some platforms.
     }

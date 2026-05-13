@@ -3,12 +3,16 @@ import { CompositePattern } from '@/features/photo-sets/types';
 
 const SETTINGS_FILE = `${FileSystem.documentDirectory}settings.json`;
 
+export type CameraMode = 'dual' | 'back-only';
+
 type Settings = {
   defaultPattern: CompositePattern;
+  cameraMode: CameraMode;
 };
 
 const DEFAULT_SETTINGS: Settings = {
-  defaultPattern: 'diagonal',
+  defaultPattern: 'circle',
+  cameraMode: 'dual',
 };
 
 export async function loadSettings(): Promise<Settings> {

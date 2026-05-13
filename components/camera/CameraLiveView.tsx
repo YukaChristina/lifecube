@@ -11,7 +11,9 @@ type CameraLiveViewProps = {
   isCapturing: boolean;
   voiceListening: boolean;
   voiceUnavailable: boolean;
+  backOnly: boolean;
   onTakePhoto: () => void;
+  onToggleCameraMode: () => void;
 };
 
 export function CameraLiveView({
@@ -20,7 +22,9 @@ export function CameraLiveView({
   isCapturing,
   voiceListening,
   voiceUnavailable,
+  backOnly,
   onTakePhoto,
+  onToggleCameraMode,
 }: CameraLiveViewProps) {
   const insets = useSafeAreaInsets();
 
@@ -30,12 +34,12 @@ export function CameraLiveView({
 
       <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
         <View style={[styles.voiceDot, voiceListening && styles.voiceDotActive]} />
-        <Text style={styles.voiceLabel}>
-          {voiceUnavailable ? '音声の許可が必要です' : voiceListening ? '音声認識中' : '音声待機中'}
-        </Text>
+        {voiceUnavailable && (
+          <Text style={styles.voiceLabel}>音声の許可が必要です</Text>
+        )}
       </View>
 
-      {isCapturing && <CaptureSwitchingOverlay />}
+      {isCapturing && !backOnly && <CaptureSwitchingOverlay />}
 
       <View
         style={[
@@ -46,13 +50,16 @@ export function CameraLiveView({
             paddingRight: insets.right + 24,
           },
         ]}>
-        <View style={styles.controlSpacer} />
+        <TouchableOpacity
+          style={[styles.modeToggle, backOnly && styles.modeToggleActive]}
+          onPress={onToggleCameraMode}>
+          <Text style={styles.modeToggleText}>{backOnly ? '背面' : '前後'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.shutterButton, isCapturing && styles.shutterDisabled]}
           onPress={onTakePhoto}
-          disabled={isCapturing}>
-          <Text style={styles.shutterText}>撮影</Text>
-        </TouchableOpacity>
+          disabled={isCapturing}
+        />
         <View style={styles.controlSpacer} />
       </View>
     </View>
@@ -76,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,250,252,0.72)',
     borderColor: 'rgba(243,184,200,0.42)',
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
@@ -106,24 +113,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,250,252,0.28)',
   },
   controlSpacer: {
-    width: 64,
+    width: 68,
   },
-  shutterButton: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: 'rgba(255,255,255,0.36)',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.92)',
+  modeToggle: {
+    width: 68,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.42)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  shutterDisabled: {
-    opacity: 0.52,
+  modeToggleActive: {
+    backgroundColor: 'rgba(243,184,200,0.30)',
+    borderColor: 'rgba(243,184,200,0.60)',
   },
-  shutterText: {
+  modeToggleText: {
     color: '#4D4650',
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  shutterButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(220,80,80,0.25)',
+    borderWidth: 2,
+    borderColor: 'rgba(190,50,50,0.55)',
+  },
+  shutterDisabled: {
+    opacity: 0.40,
   },
 });
