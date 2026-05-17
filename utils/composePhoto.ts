@@ -1,6 +1,11 @@
 import { Skia, ClipOp, PaintStyle } from '@shopify/react-native-skia';
 import * as FileSystem from 'expo-file-system/legacy';
-import { CompositePattern } from '@/features/photo-sets/types';
+import {
+  DEFAULT_FRONT_IMAGE_FOCUS,
+  type CompositePattern,
+  type FrontImageFocus,
+  type PhotoOrientation,
+} from '@/features/photo-sets/types';
 
 const PORTRAIT_WIDTH = 1080;
 const PORTRAIT_HEIGHT = 1920;
@@ -98,16 +103,79 @@ function drawImageToRect(
   );
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function drawImageToRectWithFocus(
+  canvas: ReturnType<NonNullable<ReturnType<typeof Skia.Surface.Make>>['getCanvas']>,
+  image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>,
+  targetRect: { x: number; y: number; width: number; height: number },
+  paint: ReturnType<typeof Skia.Paint>,
+  focus: FrontImageFocus,
+  baseZoom: number = 1.0,
+) {
+  const iW = image.width();
+  const iH = image.height();
+  const safeFocusX = clamp(focus.x, 0, 1);
+  const safeFocusY = clamp(focus.y, 0, 1);
+  const safeScale = Math.max(0.1, focus.scale);
+  const scale = Math.max(targetRect.width / iW, targetRect.height / iH) * baseZoom * safeScale;
+  const dW = iW * scale;
+  const dH = iH * scale;
+
+  const minX = targetRect.x + targetRect.width - dW;
+  const maxX = targetRect.x;
+  const minY = targetRect.y + targetRect.height - dH;
+  const maxY = targetRect.y;
+  const drawX = clamp(
+    targetRect.x + targetRect.width / 2 - dW * safeFocusX,
+    minX,
+    maxX,
+  );
+  const drawY = clamp(
+    targetRect.y + targetRect.height / 2 - dH * safeFocusY,
+    minY,
+    maxY,
+  );
+
+  canvas.drawImageRect(
+    image,
+    { x: 0, y: 0, width: iW, height: iH },
+    {
+      x: drawX,
+      y: drawY,
+      width: dW,
+      height: dH,
+    },
+    paint,
+  );
+}
+
+export function getComposedPhotoSize(orientation: PhotoOrientation) {
+  if (orientation === 'landscape') {
+    return {
+      width: PORTRAIT_HEIGHT,
+      height: PORTRAIT_WIDTH,
+    };
+  }
+
+  return {
+    width: PORTRAIT_WIDTH,
+    height: PORTRAIT_HEIGHT,
+  };
+}
+
 export async function composePhotos(
   frontUri: string,
   backUri: string,
   pattern: CompositePattern = 'diagonal',
-  orientation: 'portrait' | 'landscape' = 'portrait',
+  orientation: PhotoOrientation = 'portrait',
+  frontImageFocus: FrontImageFocus = DEFAULT_FRONT_IMAGE_FOCUS,
 ): Promise<string> {
   console.log(`[composePhotos] start pattern: ${pattern} orientation: ${orientation}`, { frontUri, backUri });
 
-  const OUTPUT_WIDTH = orientation === 'landscape' ? PORTRAIT_HEIGHT : PORTRAIT_WIDTH;
-  const OUTPUT_HEIGHT = orientation === 'landscape' ? PORTRAIT_WIDTH : PORTRAIT_HEIGHT;
+  const { width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT } = getComposedPhotoSize(orientation);
 
   const [frontImg, backImg] = await Promise.all([
     loadSkiaImage(frontUri),
@@ -162,13 +230,19 @@ export async function composePhotos(
       const circlePath = Skia.Path.Make();
       circlePath.addCircle(centerX, centerY, circleRadius);
       canvas.clipPath(circlePath, ClipOp.Intersect, true);
-      // 円形の中も中央寄せにする
-      drawImageToRect(canvas, frontImg, { 
-        x: centerX - circleRadius, 
-        y: centerY - circleRadius, 
-        width: circleRadius * 2, 
-        height: circleRadius * 2 
-      }, paint, 0, 1.1); // 少しだけズームして中央を強調
+      drawImageToRectWithFocus(
+        canvas,
+        frontImg,
+        {
+          x: centerX - circleRadius,
+          y: centerY - circleRadius,
+          width: circleRadius * 2,
+          height: circleRadius * 2,
+        },
+        paint,
+        frontImageFocus,
+        1.1,
+      );
       canvas.restore();
 
       // 3. 円の枠線

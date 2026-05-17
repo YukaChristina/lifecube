@@ -87,12 +87,15 @@ composedAssetId
 pattern
 composedWidth
 composedHeight
+frontImageFocusX
+frontImageFocusY
+frontImageScale
 deletedAt
 ```
 
 `id` は撮影結果を1セットとして束ねる識別子です。前後カメラ撮影では外側写真、内側写真、合成後写真を束ね、背面カメラのみ撮影では背面写真1枚を束ねます。`id` には時刻由来の文字列を含めますが、アルバムの日付順や日付グルーピングでは `createdAt` を正本として使います。
 
-各URIの意味:
+各項目の意味:
 
 - `captureMode`: `dual` または `backOnly`。前後カメラ撮影か、背面カメラのみ撮影かを表す。
 - `orientation`: `portrait` または `landscape`。撮影時の画面向き、または成果物画像の向きを表す。
@@ -102,6 +105,7 @@ deletedAt
 - `composedAssetId`: 成果物画像を端末の写真アプリへ保存したときの asset id。写真アプリ側の追跡に使う。
 - `pattern`: 合成パターン。背面カメラのみ撮影では `null` を許容する。
 - `composedWidth` / `composedHeight`: 成果物画像の出力サイズ。
+- `frontImageFocusX` / `frontImageFocusY` / `frontImageScale`: 内側写真のどの位置を合成先の基準位置に合わせるかを、0〜1の座標と拡大率で保存する。背面カメラのみ撮影では `null`。
 
 この方式にすると、以下を安定して実現できます。
 
@@ -110,6 +114,7 @@ deletedAt
 - 前後写真がワンセットであることを確実に扱う。
 - 合成パターンの選択結果を保存する。
 - 撮影モードと出力向きを保存する。
+- 将来の顔検出では、デフォルト値 `0.5 / 0.5 / 1.0` を顔位置と拡大率で置き換え、既存の合成処理へ渡す。
 - 将来的に再合成やAI自動レイアウトへ拡張しやすい。
 
 ## DBなし設計について

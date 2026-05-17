@@ -53,7 +53,6 @@ export default function CameraScreen() {
   } = useCapturePreviewSession({
     onPreviewStart: deactivateCamera,
     onReturnToCamera: activateCamera,
-    backOnly,
   });
 
   const {

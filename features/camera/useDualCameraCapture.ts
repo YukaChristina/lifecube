@@ -49,7 +49,12 @@ export function useDualCameraCapture({ onCaptured, backOnly = false, orientation
     }
 
     if (backOnlyRef.current) {
-      onCaptured({ back: backResult.uri, front: backResult.uri, orientation: orientationRef.current });
+      onCaptured({
+        back: backResult.uri,
+        front: null,
+        captureMode: 'backOnly',
+        orientation: orientationRef.current,
+      });
       resetCaptureState();
       return;
     }
@@ -70,7 +75,12 @@ export function useDualCameraCapture({ onCaptured, backOnly = false, orientation
 
       const frontResult = await cameraRef.current.takePictureAsync();
       if (frontResult?.uri) {
-        onCaptured({ back: backPhotoUri, front: frontResult.uri, orientation: orientationRef.current });
+        onCaptured({
+          back: backPhotoUri,
+          front: frontResult.uri,
+          captureMode: 'dual',
+          orientation: orientationRef.current,
+        });
       }
 
       resetCaptureState();

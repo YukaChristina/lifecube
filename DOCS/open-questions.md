@@ -41,12 +41,8 @@ MVP では、写真セットの紐付けと合成パターン保存のために 
 
 画像本体は、LifeCube 内アルバム用にアプリ内保存領域へ保存します。端末の写真アプリには成果物画像だけを保存します。前後カメラ撮影では合成後写真、背面カメラのみ撮影では背面写真が成果物画像です。詳細は `ui-ux/storage-and-platform-feasibility.md` を参照してください。
 
-DB拡張は、今後の細かな移行を繰り返さないよう、実装前に設計検討タスクとして扱います。
-
 確認したいこと:
 
-- 既存DBへ `captureMode`、`orientation`、`composedWidth`、`composedHeight`、`pattern null` 許容を追加する移行方法。
-- 背面カメラのみ撮影で、`frontLocalUri`、`pattern`、成果物画像をどう表現するか。
 - iOS の Photos asset id と Android の MediaStore uri/id が、`composedAssetId` としてどの程度安定して扱えるか。
 - ユーザーが写真アプリ側で画像を削除、編集、移動したときにどう扱うか。
 - アプリ再インストール後も残すべきデータがあるか。

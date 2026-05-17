@@ -3,7 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Share } from 'react-native';
 
 import { deleteSavedPhotoSet, savePhotoSet } from '@/features/photo-sets/save-photo-set';
-import type { CompositePattern, PhotoSet } from '@/features/photo-sets/types';
+import {
+  DEFAULT_FRONT_IMAGE_FOCUS,
+  type CompositePattern,
+  type FrontImageFocus,
+  type PhotoSet,
+} from '@/features/photo-sets/types';
 import { composePhotos } from '@/utils/composePhoto';
 import { loadSettings } from '@/utils/settings';
 
@@ -16,7 +21,6 @@ const PREVIEW_CLOSE_DELAY_MS = 4000;
 type UseCapturePreviewSessionOptions = {
   onPreviewStart: () => void;
   onReturnToCamera: () => void;
-  backOnly?: boolean;
 };
 
 async function deleteLocalUri(uri: string | null | undefined) {
@@ -31,7 +35,6 @@ async function deleteLocalUri(uri: string | null | undefined) {
 export function useCapturePreviewSession({
   onPreviewStart,
   onReturnToCamera,
-  backOnly = false,
 }: UseCapturePreviewSessionOptions) {
   const [photos, setPhotos] = useState<CapturedPhotoPair | null>(null);
   const [composedUri, setComposedUri] = useState<string | null>(null);
@@ -39,7 +42,8 @@ export function useCapturePreviewSession({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [savedPhotoSet, setSavedPhotoSet] = useState<PhotoSet | null>(null);
   const [closeScheduledAt, setCloseScheduledAt] = useState<number | null>(null);
-  const activePatternRef = useRef<CompositePattern>('circle');
+  const activePatternRef = useRef<CompositePattern | null>('circle');
+  const frontImageFocusRef = useRef<FrontImageFocus | null>(DEFAULT_FRONT_IMAGE_FOCUS);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewSessionRef = useRef(0);
   const deleteRequestedSessionsRef = useRef<Set<number>>(new Set());
@@ -91,17 +95,32 @@ export function useCapturePreviewSession({
     setComposedUri(null);
     clearPreviewTimer();
 
-    if (backOnly) {
+    if (photos.captureMode === 'backOnly') {
+      activePatternRef.current = null;
+      frontImageFocusRef.current = null;
       setIsComposing(false);
       setComposedUri(photos.back);
       return;
     }
 
+    if (!photos.front) {
+      Alert.alert('エラー', '前面写真が見つかりませんでした');
+      setIsComposing(false);
+      return;
+    }
+
     setIsComposing(true);
+    frontImageFocusRef.current = DEFAULT_FRONT_IMAGE_FOCUS;
 
     loadSettings().then(settings => {
       activePatternRef.current = settings.defaultPattern;
-      return composePhotos(photos.front, photos.back, settings.defaultPattern, photos.orientation);
+      return composePhotos(
+        photos.front as string,
+        photos.back,
+        settings.defaultPattern,
+        photos.orientation,
+        DEFAULT_FRONT_IMAGE_FOCUS,
+      );
     })
       .then(uri => {
         if (
@@ -124,7 +143,7 @@ export function useCapturePreviewSession({
           setIsComposing(false);
         }
       });
-  }, [backOnly, clearPreviewTimer, photos]);
+  }, [clearPreviewTimer, photos]);
 
   const saveCurrentPhotoSet = useCallback(async (uri: string, sessionId: number) => {
     if (!photos) {
@@ -142,7 +161,10 @@ export function useCapturePreviewSession({
         backUri: photos.back,
         frontUri: photos.front,
         composedUri: uri,
+        captureMode: photos.captureMode,
+        orientation: photos.orientation,
         pattern: activePatternRef.current,
+        frontImageFocus: frontImageFocusRef.current,
       });
 
       if (deleteRequestedSessionsRef.current.has(sessionId)) {
