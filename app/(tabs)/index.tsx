@@ -46,6 +46,7 @@ export default function CameraScreen() {
     composedUri,
     deletePreview,
     isComposing,
+    orientation: previewOrientation,
     returnToCamera,
     share,
     startPreview,
@@ -79,6 +80,7 @@ export default function CameraScreen() {
       <CapturePreview
         isComposing={isComposing}
         composedUri={composedUri}
+        orientation={previewOrientation}
         closeScheduledAt={closeScheduledAt}
         onResetToCamera={returnToCamera}
         onShare={share}

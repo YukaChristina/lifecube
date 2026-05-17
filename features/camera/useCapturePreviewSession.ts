@@ -227,6 +227,7 @@ export function useCapturePreviewSession({
     composedUri,
     deletePreview,
     isComposing,
+    orientation: photos?.orientation ?? null,
     returnToCamera,
     share,
     startPreview,
