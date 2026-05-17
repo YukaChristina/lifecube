@@ -3,16 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PhotoOrientation } from '@/features/photo-sets/types';
 
-import {
-  getPhotoOrientationFromCameraOrientation,
-  getPhotoOrientationFromSize,
-} from './photo-orientation';
+import { resolvePhotoOrientation } from './photo-orientation';
 import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
 type UseDualCameraCaptureOptions = {
   onCaptured: (photos: CapturedPhotoPair) => void;
   backOnly?: boolean;
-  orientationFallback?: PhotoOrientation;
+  screenOrientationFallback?: PhotoOrientation;
 };
 
 type CapturedBackPhoto = {
@@ -23,7 +20,7 @@ type CapturedBackPhoto = {
 export function useDualCameraCapture({
   onCaptured,
   backOnly = false,
-  orientationFallback = 'portrait',
+  screenOrientationFallback = 'portrait',
 }: UseDualCameraCaptureOptions) {
   const [facing, setFacing] = useState<CameraType>('back');
   const [captureStep, setCaptureStep] = useState<DualCameraCaptureStep>('idle');
@@ -33,9 +30,9 @@ export function useDualCameraCapture({
   const isCapturingRef = useRef(false);
   const backOnlyRef = useRef(backOnly);
   backOnlyRef.current = backOnly;
-  const orientationFallbackRef = useRef(orientationFallback);
-  orientationFallbackRef.current = orientationFallback;
-  const cameraOrientationRef = useRef<PhotoOrientation | null>(null);
+  const screenOrientationFallbackRef = useRef(screenOrientationFallback);
+  screenOrientationFallbackRef.current = screenOrientationFallback;
+  const cameraOrientationRef = useRef<CameraOrientation | null>(null);
 
   useEffect(() => {
     isCapturingRef.current = isCapturing;
@@ -54,8 +51,7 @@ export function useDualCameraCapture({
   }, [resetToBackCamera]);
 
   const handleCameraOrientationChange = useCallback((cameraOrientation: CameraOrientation) => {
-    cameraOrientationRef.current =
-      getPhotoOrientationFromCameraOrientation(cameraOrientation);
+    cameraOrientationRef.current = cameraOrientation;
   }, []);
 
   const takePhoto = useCallback(async () => {
@@ -69,9 +65,11 @@ export function useDualCameraCapture({
       return;
     }
 
-    const backOrientation =
-      cameraOrientationRef.current ??
-      getPhotoOrientationFromSize(backResult, orientationFallbackRef.current);
+    const backOrientation = resolvePhotoOrientation({
+      cameraOrientation: cameraOrientationRef.current,
+      photoSize: backResult,
+      screenOrientationFallback: screenOrientationFallbackRef.current,
+    });
 
     if (backOnlyRef.current) {
       onCaptured({

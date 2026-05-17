@@ -14,7 +14,7 @@ import { loadSettings, saveSettings } from '@/utils/settings';
 
 export default function CameraScreen() {
   const { width, height } = useWindowDimensions();
-  const orientationFallback = width > height ? 'landscape' : 'portrait';
+  const screenOrientationFallback = width > height ? 'landscape' : 'portrait';
 
   const [backOnly, setBackOnly] = useState(false);
 
@@ -64,7 +64,7 @@ export default function CameraScreen() {
   } = useDualCameraCapture({
     onCaptured: startPreview,
     backOnly,
-    orientationFallback,
+    screenOrientationFallback,
   });
 
   const voice = useShutterVoiceTrigger({

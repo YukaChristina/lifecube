@@ -30,7 +30,7 @@ export function getPhotoOrientationFromSize(
 
 export function getPhotoOrientationFromCameraOrientation(
   cameraOrientation: CameraOrientation | null | undefined,
-) {
+): PhotoOrientation | null {
   if (
     cameraOrientation === 'landscapeLeft' ||
     cameraOrientation === 'landscapeRight'
@@ -46,4 +46,17 @@ export function getPhotoOrientationFromCameraOrientation(
   }
 
   return null;
+}
+
+export function resolvePhotoOrientation({
+  cameraOrientation,
+  photoSize,
+  screenOrientationFallback,
+}: {
+  cameraOrientation?: CameraOrientation | null;
+  photoSize: CapturedPhotoSize;
+  screenOrientationFallback: PhotoOrientation;
+}): PhotoOrientation {
+  return getPhotoOrientationFromCameraOrientation(cameraOrientation) ??
+    getPhotoOrientationFromSize(photoSize, screenOrientationFallback);
 }
