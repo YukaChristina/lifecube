@@ -10,11 +10,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { PhotoOrientation } from '@/features/photo-sets/types';
+
 const PREVIEW_CLOSE_DELAY_MS = 4000;
 
 type CapturePreviewProps = {
   isComposing: boolean;
   composedUri: string | null;
+  orientation: PhotoOrientation | null;
   closeScheduledAt: number | null;
   onResetToCamera: () => void;
   onShare: () => void;
@@ -24,6 +27,7 @@ type CapturePreviewProps = {
 export function CapturePreview({
   isComposing,
   composedUri,
+  orientation,
   closeScheduledAt,
   onResetToCamera,
   onShare,
@@ -31,6 +35,7 @@ export function CapturePreview({
 }: CapturePreviewProps) {
   const insets = useSafeAreaInsets();
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const previewResizeMode = orientation === 'landscape' ? 'contain' : 'cover';
 
   useEffect(() => {
     if (closeScheduledAt == null) {
@@ -57,7 +62,11 @@ export function CapturePreview({
         </View>
       ) : composedUri ? (
         <>
-          <Image source={{ uri: composedUri }} style={styles.previewImage} resizeMode="cover" />
+          <Image
+            source={{ uri: composedUri }}
+            style={styles.previewImage}
+            resizeMode={previewResizeMode}
+          />
           <Pressable style={styles.previewTapLayer} onPress={onResetToCamera} />
 
           <View

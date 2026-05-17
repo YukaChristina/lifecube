@@ -46,6 +46,7 @@ export default function CameraScreen() {
     composedUri,
     deletePreview,
     isComposing,
+    orientation: previewOrientation,
     returnToCamera,
     share,
     startPreview,
@@ -60,6 +61,7 @@ export default function CameraScreen() {
     facing,
     isCapturing,
     onCameraOrientationChange,
+    onCameraReady,
     takePhoto,
   } = useDualCameraCapture({
     onCaptured: startPreview,
@@ -79,6 +81,7 @@ export default function CameraScreen() {
       <CapturePreview
         isComposing={isComposing}
         composedUri={composedUri}
+        orientation={previewOrientation}
         closeScheduledAt={closeScheduledAt}
         onResetToCamera={returnToCamera}
         onShare={share}
@@ -112,6 +115,7 @@ export default function CameraScreen() {
       voiceUnavailable={voice.unavailable}
       backOnly={backOnly}
       onCameraOrientationChange={onCameraOrientationChange}
+      onCameraReady={onCameraReady}
       onTakePhoto={takePhoto}
       onToggleCameraMode={toggleCameraMode}
     />
