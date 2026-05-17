@@ -35,22 +35,22 @@ function makeDiagonalPaths(W: number, H: number) {
   curve.moveTo(startX, startY);
   curve.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
 
-  const leftClip = Skia.Path.Make();
-  leftClip.moveTo(0, 0);
-  leftClip.lineTo(startX, startY);
-  leftClip.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
-  leftClip.lineTo(0, 0);
-  leftClip.close();
+  const upperClip = Skia.Path.Make();
+  upperClip.moveTo(0, 0);
+  upperClip.lineTo(startX, startY);
+  upperClip.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
+  upperClip.lineTo(0, 0);
+  upperClip.close();
 
-  const rightClip = Skia.Path.Make();
-  rightClip.moveTo(startX, startY);
-  rightClip.lineTo(OUTPUT_WIDTH, 0);
-  rightClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  rightClip.lineTo(endX, endY);
-  rightClip.cubicTo(cx2, cy2, cx1, cy1, startX, startY);
-  rightClip.close();
+  const lowerClip = Skia.Path.Make();
+  lowerClip.moveTo(startX, startY);
+  lowerClip.lineTo(OUTPUT_WIDTH, 0);
+  lowerClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  lowerClip.lineTo(endX, endY);
+  lowerClip.cubicTo(cx2, cy2, cx1, cy1, startX, startY);
+  lowerClip.close();
 
-  return { curve, leftClip, rightClip };
+  return { curve, upperClip, lowerClip };
 }
 
 async function loadSkiaImage(uri: string) {
@@ -193,18 +193,18 @@ export async function composePhotos(
 
   switch (pattern) {
     case 'diagonal': {
-      const { curve, leftClip, rightClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      const { curve, upperClip, lowerClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const style = COLORS.diagonal;
 
-      // 背面写真 (右/後): 1.2倍ズームして右に寄せる
+      // 背面写真 (上側): 1.2倍ズームして右に寄せる
       canvas.save();
-      canvas.clipPath(rightClip, ClipOp.Intersect, true);
+      canvas.clipPath(upperClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
       canvas.restore();
 
-      // 前面写真 (左/前): 1.2倍ズームして左に寄せる
+      // 前面写真 (下側): 1.2倍ズームして左に寄せる
       canvas.save();
-      canvas.clipPath(leftClip, ClipOp.Intersect, true);
+      canvas.clipPath(lowerClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, -0.8, 1.2);
       canvas.restore();
 

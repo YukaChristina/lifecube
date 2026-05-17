@@ -106,8 +106,8 @@ function PatternPreview({
 
     return (
       <Canvas style={styles.patternCanvas}>
-        <Path path={upperLeft} color={PATTERN_PREVIEW_FRONT_FILL} />
-        <Path path={lowerRight} color={PATTERN_PREVIEW_BACK_FILL} />
+        <Path path={upperLeft} color={PATTERN_PREVIEW_BACK_FILL} />
+        <Path path={lowerRight} color={PATTERN_PREVIEW_FRONT_FILL} />
         <Path
           path={curve}
           color={PATTERN_PREVIEW_LINE}
@@ -143,8 +143,8 @@ function PatternPreview({
 
   return (
     <Canvas style={styles.patternCanvas}>
-      <Rect x={0} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_FRONT_FILL} />
-      <Rect x={dividerX} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
+      <Rect x={0} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
+      <Rect x={dividerX} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_FRONT_FILL} />
       <Rect x={dividerX - 1.1} y={0} width={2.2} height={height} color={PATTERN_PREVIEW_LINE} />
     </Canvas>
   );
