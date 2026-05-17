@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 import { loadSettings, saveSettings } from '@/utils/settings';
 import { CompositePattern } from '@/features/photo-sets/types';
+import { makeDiagonalCompositionPaths } from '@/features/photo-sets/diagonal-composition';
 
 const PATTERNS: { id: CompositePattern; label: string }[] = [
   { id: 'circle', label: '円形くりぬき' },
@@ -100,16 +101,14 @@ function PatternPreview({
   width: number;
 }) {
   if (pattern === 'diagonal') {
-    const curve = `M ${width} 0 C ${width} ${height * 0.78} 0 ${height * 0.22} 0 ${height}`;
-    const upperLeft = `M 0 0 L ${width} 0 C ${width} ${height * 0.78} 0 ${height * 0.22} 0 ${height} L 0 0 Z`;
-    const lowerRight = `M ${width} 0 L ${width} ${height} L 0 ${height} C 0 ${height * 0.22} ${width} ${height * 0.78} ${width} 0 Z`;
+    const { curvePath, outerClipPath, innerClipPath } = makeDiagonalCompositionPaths(width, height);
 
     return (
       <Canvas style={styles.patternCanvas}>
-        <Path path={upperLeft} color={PATTERN_PREVIEW_BACK_FILL} />
-        <Path path={lowerRight} color={PATTERN_PREVIEW_FRONT_FILL} />
+        <Path path={outerClipPath} color={PATTERN_PREVIEW_BACK_FILL} />
+        <Path path={innerClipPath} color={PATTERN_PREVIEW_FRONT_FILL} />
         <Path
-          path={curve}
+          path={curvePath}
           color={PATTERN_PREVIEW_LINE}
           style="stroke"
           strokeWidth={2.2}

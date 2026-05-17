@@ -6,6 +6,7 @@ import {
   type FrontImageFocus,
   type PhotoOrientation,
 } from '@/features/photo-sets/types';
+import { makeDiagonalCompositionPaths } from '@/features/photo-sets/diagonal-composition';
 
 const PORTRAIT_WIDTH = 1080;
 const PORTRAIT_HEIGHT = 1920;
@@ -20,37 +21,16 @@ const COLORS = {
 
 // 1. 斜めカット用パス
 function makeDiagonalPaths(W: number, H: number) {
-  const OUTPUT_WIDTH = W;
-  const OUTPUT_HEIGHT = H;
-  const startX = OUTPUT_WIDTH;
-  const startY = 0;
-  const endX = 0;
-  const endY = OUTPUT_HEIGHT;
-  const cx1 = OUTPUT_WIDTH;
-  const cy1 = OUTPUT_HEIGHT * 0.78;
-  const cx2 = 0;
-  const cy2 = OUTPUT_HEIGHT * 0.22;
+  const paths = makeDiagonalCompositionPaths(W, H);
+  const curve = Skia.Path.MakeFromSVGString(paths.curvePath);
+  const outerClip = Skia.Path.MakeFromSVGString(paths.outerClipPath);
+  const innerClip = Skia.Path.MakeFromSVGString(paths.innerClipPath);
 
-  const curve = Skia.Path.Make();
-  curve.moveTo(startX, startY);
-  curve.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
+  if (!curve || !outerClip || !innerClip) {
+    throw new Error('斜めカット用パスの作成に失敗しました');
+  }
 
-  const upperClip = Skia.Path.Make();
-  upperClip.moveTo(0, 0);
-  upperClip.lineTo(startX, startY);
-  upperClip.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
-  upperClip.lineTo(0, 0);
-  upperClip.close();
-
-  const lowerClip = Skia.Path.Make();
-  lowerClip.moveTo(startX, startY);
-  lowerClip.lineTo(OUTPUT_WIDTH, 0);
-  lowerClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  lowerClip.lineTo(endX, endY);
-  lowerClip.cubicTo(cx2, cy2, cx1, cy1, startX, startY);
-  lowerClip.close();
-
-  return { curve, upperClip, lowerClip };
+  return { curve, outerClip, innerClip };
 }
 
 async function loadSkiaImage(uri: string) {
@@ -193,18 +173,18 @@ export async function composePhotos(
 
   switch (pattern) {
     case 'diagonal': {
-      const { curve, upperClip, lowerClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      const { curve, outerClip, innerClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const style = COLORS.diagonal;
 
-      // 背面写真 (上側): 1.2倍ズームして右に寄せる
+      // 背面写真 (外側): 1.2倍ズームして右に寄せる
       canvas.save();
-      canvas.clipPath(upperClip, ClipOp.Intersect, true);
+      canvas.clipPath(outerClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
       canvas.restore();
 
-      // 前面写真 (下側): 1.2倍ズームして左に寄せる
+      // 前面写真 (内側): 1.2倍ズームして左に寄せる
       canvas.save();
-      canvas.clipPath(lowerClip, ClipOp.Intersect, true);
+      canvas.clipPath(innerClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, -0.8, 1.2);
       canvas.restore();
 
