@@ -1,4 +1,4 @@
-import { CameraView, type CameraType } from 'expo-camera';
+import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
 import type { RefObject } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ type CameraLiveViewProps = {
   isCapturing: boolean;
   voiceUnavailable: boolean;
   backOnly: boolean;
+  onCameraOrientationChange: (orientation: CameraOrientation) => void;
   onTakePhoto: () => void;
   onToggleCameraMode: () => void;
 };
@@ -21,6 +22,7 @@ export function CameraLiveView({
   isCapturing,
   voiceUnavailable,
   backOnly,
+  onCameraOrientationChange,
   onTakePhoto,
   onToggleCameraMode,
 }: CameraLiveViewProps) {
@@ -31,7 +33,15 @@ export function CameraLiveView({
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
+      <CameraView
+        style={styles.camera}
+        facing={facing}
+        ref={cameraRef}
+        responsiveOrientationWhenOrientationLocked
+        onResponsiveOrientationChanged={({ orientation }) => {
+          onCameraOrientationChange(orientation);
+        }}
+      />
 
       <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
         <Text style={[styles.voiceLabel, voiceUnavailable && styles.voiceLabelWarning]}>

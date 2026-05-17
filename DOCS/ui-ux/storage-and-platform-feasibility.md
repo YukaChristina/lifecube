@@ -98,7 +98,7 @@ deletedAt
 各項目の意味:
 
 - `captureMode`: `dual` または `backOnly`。前後カメラ撮影か、背面カメラのみ撮影かを表す。
-- `orientation`: `portrait` または `landscape`。撮影時の画面向き、または成果物画像の向きを表す。
+- `orientation`: `portrait` または `landscape`。カメラが通知する撮影時の向きを優先し、取得できない場合は背面カメラ撮影結果の `width` / `height` を基準にした成果物画像の向きを表す。
 - `backLocalUri`: 外側カメラで撮った元写真のアプリ内保存先。
 - `frontLocalUri`: 内側カメラで撮った元写真のアプリ内保存先。背面カメラのみ撮影では `null`。
 - `composedLocalUri`: アルバム一覧と詳細表示の主表示に使う成果物画像のアプリ内保存先。前後カメラ撮影では合成後写真、背面カメラのみ撮影では背面写真の保存先。

@@ -243,12 +243,14 @@ export default function PhotoSetDetailScreen() {
             label="外側"
             uri={photoSet.backLocalUri}
             exists={originalAvailability.back}
+            orientation={photoSet.orientation}
             width={imageMaxWidth}
           />
           <OriginalPhoto
             label="内側"
             uri={photoSet.captureMode === 'dual' ? photoSet.frontLocalUri : null}
             exists={originalAvailability.front}
+            orientation={photoSet.orientation}
             width={imageMaxWidth}
           />
           <Pressable style={styles.returnButton} onPress={() => setMode('composed')}>
@@ -336,14 +338,20 @@ function OriginalPhoto({
   label,
   uri,
   exists,
+  orientation,
   width,
 }: {
   label: string;
   uri: string | null;
   exists: boolean;
+  orientation: PhotoSet['orientation'];
   width: number;
 }) {
   if (!uri && !exists) return null;
+
+  const height = orientation === 'landscape'
+    ? width * (9 / 16)
+    : width * (16 / 9);
 
   return (
     <View style={styles.originalBlock}>
@@ -351,11 +359,11 @@ function OriginalPhoto({
       {exists && uri ? (
         <Image
           source={{ uri }}
-          style={[styles.originalImage, { width, height: width * (16 / 9) }]}
+          style={[styles.originalImage, { width, height }]}
           resizeMode="contain"
         />
       ) : (
-        <View style={[styles.originalMissing, { width, height: width * (16 / 9) }]}>
+        <View style={[styles.originalMissing, { width, height }]}>
           <Text style={styles.originalMissingText}>表示できません</Text>
         </View>
       )}
