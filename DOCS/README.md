@@ -24,6 +24,7 @@ AI エージェント向けの作業入口は、リポジトリルートの `AGE
 - React Native / TypeScript 規約: `coding-guidelines.md`
 - テスト戦略: `test-strategy.md`
 - UI/UX詳細: `ui-ux/README.md`
+- 顔検出による内側写真フォーカス補正: `ui-ux/face-focus-composition.md`
 - UIデザイン方針: `ui-ux/design-guidelines.md`
 - ネイティブアプリとビルド方針: `native-app-policy.md`
 

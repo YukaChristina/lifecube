@@ -8,8 +8,9 @@
 
 1. `mvp-ui-ux.md`
 2. `storage-and-platform-feasibility.md`
-3. `wireframes.md`
-4. `design-guidelines.md`
+3. `face-focus-composition.md`
+4. `wireframes.md`
+5. `design-guidelines.md`
 
 ## 現在の設計姿勢
 
@@ -22,6 +23,7 @@
 - `index` ルートをカメラ画面にし、アルバムは写真セットDBの一覧、ガイドは撮影方法、ホームは説明・合成パターン設定・課金設定入口へ接続する。
 - 撮影後プレビューは、上部の薄い案内帯、背景タップでカメラ復帰、4秒進捗バー、`Instagramで共有`、`削除する` の導線を基本形にする。
 - 保存基盤は `expo-sqlite` のローカルDBとアプリ内ファイル保存を使う。前後カメラ撮影ではアプリ内に3枚、背面カメラのみ撮影では背面写真1枚を保存する。端末の写真アプリには成果物画像だけを保存する。
+- 顔検出による内側写真フォーカス補正は `face-focus-composition.md` に整理する。
 - PC 利用は正式な想定対象にしない。
 - iOS / Android の両方を対象にする。
 - ネイティブ機能は、まず Expo modules と React Native ライブラリから利用する。
