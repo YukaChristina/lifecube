@@ -285,14 +285,14 @@ export default function PhotoSetDetailScreen() {
           {canUpdatePattern ? (
             <View style={styles.patternSwitcher}>
               <PatternButton
-                active={photoSet.pattern === 'diagonal'}
-                onPress={() => handleUpdatePattern('diagonal')}
-                label="斜め"
-              />
-              <PatternButton
                 active={photoSet.pattern === 'circle'}
                 onPress={() => handleUpdatePattern('circle')}
                 label="円形"
+              />
+              <PatternButton
+                active={photoSet.pattern === 'diagonal'}
+                onPress={() => handleUpdatePattern('diagonal')}
+                label="斜め"
               />
               <PatternButton
                 active={photoSet.pattern === 'split'}
