@@ -11,6 +11,9 @@ type UseShutterVoiceTriggerOptions = {
   onTrigger: () => void;
 };
 
+const SHUTTER_TRIGGER_WORD = 'シャッター';
+const SPEECH_RESTART_DELAY_MS = 100;
+
 export function useShutterVoiceTrigger({
   active,
   disabled,
@@ -60,6 +63,8 @@ export function useShutterVoiceTrigger({
       ExpoSpeechRecognitionModule.start({
         lang: 'ja-JP',
         interimResults: true,
+        maxAlternatives: 1,
+        contextualStrings: [SHUTTER_TRIGGER_WORD],
         continuous: true,
         iosCategory: {
           category: 'playAndRecord',
@@ -110,13 +115,13 @@ export function useShutterVoiceTrigger({
     if (activeRef.current) {
       setTimeout(() => {
         if (activeRef.current) void start();
-      }, 300);
+      }, SPEECH_RESTART_DELAY_MS);
     }
   });
 
   useSpeechRecognitionEvent('result', (event) => {
     const text = event.results[0]?.transcript ?? '';
-    if (activeRef.current && text.includes('シャッター') && !disabledRef.current) {
+    if (activeRef.current && text.includes(SHUTTER_TRIGGER_WORD) && !disabledRef.current) {
       onTriggerRef.current();
     }
   });
