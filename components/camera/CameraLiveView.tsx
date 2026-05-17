@@ -9,7 +9,6 @@ type CameraLiveViewProps = {
   cameraRef: RefObject<CameraView | null>;
   facing: CameraType;
   isCapturing: boolean;
-  voiceListening: boolean;
   voiceUnavailable: boolean;
   backOnly: boolean;
   onTakePhoto: () => void;
@@ -20,23 +19,24 @@ export function CameraLiveView({
   cameraRef,
   facing,
   isCapturing,
-  voiceListening,
   voiceUnavailable,
   backOnly,
   onTakePhoto,
   onToggleCameraMode,
 }: CameraLiveViewProps) {
   const insets = useSafeAreaInsets();
+  const voiceGuideText = voiceUnavailable
+    ? '音声の許可が必要です'
+    : '「シャッター」と言うと撮影します';
 
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
 
       <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
-        <View style={[styles.voiceDot, voiceListening && styles.voiceDotActive]} />
-        {voiceUnavailable && (
-          <Text style={styles.voiceLabel}>音声の許可が必要です</Text>
-        )}
+        <Text style={[styles.voiceLabel, voiceUnavailable && styles.voiceLabelWarning]}>
+          {voiceGuideText}
+        </Text>
       </View>
 
       {isCapturing && !backOnly && <CaptureSwitchingOverlay />}
@@ -77,29 +77,23 @@ const styles = StyleSheet.create({
   voiceIndicator: {
     position: 'absolute',
     alignSelf: 'center',
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,250,252,0.72)',
-    borderColor: 'rgba(243,184,200,0.42)',
+    maxWidth: '78%',
+    backgroundColor: 'rgba(255,250,252,0.54)',
+    borderColor: 'rgba(243,184,200,0.30)',
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  voiceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D7CED9',
-  },
-  voiceDotActive: {
-    backgroundColor: '#A8D8CC',
-  },
   voiceLabel: {
-    color: '#4D4650',
+    color: 'rgba(77,70,80,0.78)',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  voiceLabelWarning: {
+    color: '#6D4A59',
   },
   cameraControls: {
     position: 'absolute',

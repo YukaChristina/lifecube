@@ -30,19 +30,19 @@ export function CapturePreview({
   onDelete,
 }: CapturePreviewProps) {
   const insets = useSafeAreaInsets();
-  const progressAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (closeScheduledAt == null) {
       progressAnim.stopAnimation();
-      progressAnim.setValue(1);
+      progressAnim.setValue(0);
       return;
     }
     const elapsed = Date.now() - closeScheduledAt;
     const remaining = Math.max(0, PREVIEW_CLOSE_DELAY_MS - elapsed);
-    progressAnim.setValue(remaining / PREVIEW_CLOSE_DELAY_MS);
+    progressAnim.setValue(Math.min(1, elapsed / PREVIEW_CLOSE_DELAY_MS));
     Animated.timing(progressAnim, {
-      toValue: 0,
+      toValue: 1,
       duration: remaining,
       useNativeDriver: false,
     }).start();
@@ -85,18 +85,19 @@ export function CapturePreview({
             </TouchableOpacity>
           </View>
 
-          <Animated.View
-            style={[
-              styles.progressBar,
-              {
-                width: progressAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-            pointerEvents="none"
-          />
+          <View style={styles.progressTrack} pointerEvents="none">
+            <Animated.View
+              style={[
+                styles.progressBar,
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
+          </View>
         </>
       ) : null}
     </View>
@@ -172,12 +173,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  progressBar: {
+  progressTrack: {
     position: 'absolute',
     bottom: 0,
     left: 0,
+    right: 0,
     height: 8,
-    backgroundColor: 'rgba(243,184,200,0.85)',
+    backgroundColor: 'rgba(255,250,252,0.28)',
     zIndex: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: 'rgba(243,184,200,0.82)',
   },
 });

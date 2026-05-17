@@ -30,11 +30,12 @@ LifeCube は、iOS / Android の両方で動作するインストール可能な
 - `app/(tabs)/_layout.tsx`: タブレイアウト
 - `app/(tabs)/index.tsx`: 起動直後に開くカメラ画面
 - `app/(tabs)/gallery.tsx`: 写真セットDBを使うアルバム一覧画面
+- `app/(tabs)/guide.tsx`: 撮影方法を確認するガイド画面
 - `app/(tabs)/home.tsx`: アプリ説明、合成パターン設定、課金設定入口を置くホーム画面
 - `app/photo-set/[id].tsx`: アルバム詳細画面
 - `app/modal.tsx`: モーダル画面
 
-現行コードの下部タブは `カメラ / アルバム / ホーム` の3つです。直近方針として、`カメラ / アルバム / ガイド / ホーム` の4タブ構成へ変更します。旧 `explore` 画面、旧 `camera.tsx` ルート、開発用の `voice-test` 画面は削除済みです。
+下部タブは `カメラ / アルバム / ガイド / ホーム` の4つです。旧 `explore` 画面、旧 `camera.tsx` ルート、開発用の `voice-test` 画面は削除済みです。
 
 現在コード上で確認できる機能領域は以下です。
 

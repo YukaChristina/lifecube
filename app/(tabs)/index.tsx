@@ -109,7 +109,6 @@ export default function CameraScreen() {
       cameraRef={cameraRef}
       facing={facing}
       isCapturing={isCapturing}
-      voiceListening={voice.listening}
       voiceUnavailable={voice.unavailable}
       backOnly={backOnly}
       onTakePhoto={takePhoto}

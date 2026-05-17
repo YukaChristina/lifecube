@@ -122,8 +122,23 @@ export default function PhotoSetDetailScreen() {
   }, [goBackToAlbum, isDeleting, photoSet]);
 
   const confirmDelete = useCallback(() => {
-    // ... (rest of the code is unchanged)
-  }, [deletePhotoSet]);
+    if (!photoSet || isDeleting) return;
+
+    Alert.alert(
+      '写真を削除しますか？',
+      'LifeCubeアルバムから削除します。端末の写真アプリに保存された画像は残ります。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: () => {
+            void deletePhotoSet();
+          },
+        },
+      ],
+    );
+  }, [deletePhotoSet, isDeleting, photoSet]);
 
   const handleUpdatePattern = async (newPattern: CompositePattern) => {
     if (!photoSet || isUpdatingPattern || !photoSet.backLocalUri || !photoSet.frontLocalUri) return;
