@@ -1,25 +1,38 @@
-import { CameraView, type CameraType } from 'expo-camera';
+import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { PhotoOrientation } from '@/features/photo-sets/types';
+
+import { resolvePhotoOrientation } from './photo-orientation';
 import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
 type UseDualCameraCaptureOptions = {
   onCaptured: (photos: CapturedPhotoPair) => void;
   backOnly?: boolean;
-  orientation?: 'portrait' | 'landscape';
+  screenOrientationFallback?: PhotoOrientation;
 };
 
-export function useDualCameraCapture({ onCaptured, backOnly = false, orientation = 'portrait' }: UseDualCameraCaptureOptions) {
+type CapturedBackPhoto = {
+  uri: string;
+  orientation: PhotoOrientation;
+};
+
+export function useDualCameraCapture({
+  onCaptured,
+  backOnly = false,
+  screenOrientationFallback = 'portrait',
+}: UseDualCameraCaptureOptions) {
   const [facing, setFacing] = useState<CameraType>('back');
   const [captureStep, setCaptureStep] = useState<DualCameraCaptureStep>('idle');
-  const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
+  const [backPhoto, setBackPhoto] = useState<CapturedBackPhoto | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const isCapturingRef = useRef(false);
   const backOnlyRef = useRef(backOnly);
   backOnlyRef.current = backOnly;
-  const orientationRef = useRef(orientation);
-  orientationRef.current = orientation;
+  const screenOrientationFallbackRef = useRef(screenOrientationFallback);
+  screenOrientationFallbackRef.current = screenOrientationFallback;
+  const cameraOrientationRef = useRef<CameraOrientation | null>(null);
 
   useEffect(() => {
     isCapturingRef.current = isCapturing;
@@ -31,11 +44,15 @@ export function useDualCameraCapture({ onCaptured, backOnly = false, orientation
 
   const resetCaptureState = useCallback(() => {
     setCaptureStep('idle');
-    setBackPhotoUri(null);
+    setBackPhoto(null);
     setIsCapturing(false);
     isCapturingRef.current = false;
     resetToBackCamera();
   }, [resetToBackCamera]);
+
+  const handleCameraOrientationChange = useCallback((cameraOrientation: CameraOrientation) => {
+    cameraOrientationRef.current = cameraOrientation;
+  }, []);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current || isCapturingRef.current) return;
@@ -48,19 +65,33 @@ export function useDualCameraCapture({ onCaptured, backOnly = false, orientation
       return;
     }
 
+    const backOrientation = resolvePhotoOrientation({
+      cameraOrientation: cameraOrientationRef.current,
+      photoSize: backResult,
+      screenOrientationFallback: screenOrientationFallbackRef.current,
+    });
+
     if (backOnlyRef.current) {
-      onCaptured({ back: backResult.uri, front: backResult.uri, orientation: orientationRef.current });
+      onCaptured({
+        back: backResult.uri,
+        front: null,
+        captureMode: 'backOnly',
+        orientation: backOrientation,
+      });
       resetCaptureState();
       return;
     }
 
-    setBackPhotoUri(backResult.uri);
+    setBackPhoto({
+      uri: backResult.uri,
+      orientation: backOrientation,
+    });
     setFacing('front');
     setCaptureStep('capturingFront');
   }, [onCaptured, resetCaptureState]);
 
   useEffect(() => {
-    if (captureStep !== 'capturingFront' || !backPhotoUri) return;
+    if (captureStep !== 'capturingFront' || !backPhoto) return;
 
     const timer = setTimeout(async () => {
       if (!cameraRef.current) {
@@ -70,19 +101,25 @@ export function useDualCameraCapture({ onCaptured, backOnly = false, orientation
 
       const frontResult = await cameraRef.current.takePictureAsync();
       if (frontResult?.uri) {
-        onCaptured({ back: backPhotoUri, front: frontResult.uri, orientation: orientationRef.current });
+        onCaptured({
+          back: backPhoto.uri,
+          front: frontResult.uri,
+          captureMode: 'dual',
+          orientation: backPhoto.orientation,
+        });
       }
 
       resetCaptureState();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [backPhotoUri, captureStep, onCaptured, resetCaptureState]);
+  }, [backPhoto, captureStep, onCaptured, resetCaptureState]);
 
   return {
     cameraRef,
     facing,
     isCapturing,
+    onCameraOrientationChange: handleCameraOrientationChange,
     resetToBackCamera,
     takePhoto,
   };

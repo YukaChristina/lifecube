@@ -14,6 +14,7 @@ app/
     _layout.tsx
     index.tsx
     gallery.tsx
+    guide.tsx
     home.tsx
 features/
   photo-sets/

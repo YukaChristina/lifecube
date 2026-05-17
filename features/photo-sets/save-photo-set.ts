@@ -1,3 +1,5 @@
+import { Image } from 'react-native';
+
 import { insertPhotoSet, markPhotoSetDeleted } from './db';
 import {
   copyPhotoSetFiles,
@@ -15,11 +17,32 @@ function createPhotoSetId(createdAt: number) {
   return `${timestamp}_${suffix}`;
 }
 
+function getImageSize(uri: string) {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    Image.getSize(
+      uri,
+      (width, height) => resolve({ width, height }),
+      reject,
+    );
+  });
+}
+
+function getFallbackComposedSize(orientation: SavePhotoSetInput['orientation']) {
+  if (orientation === 'landscape') {
+    return { width: 1920, height: 1080 };
+  }
+
+  return { width: 1080, height: 1920 };
+}
+
 export async function savePhotoSet({
   backUri,
   frontUri,
   composedUri,
+  captureMode,
+  orientation,
   pattern,
+  frontImageFocus,
 }: SavePhotoSetInput): Promise<PhotoSet> {
   const createdAt = Date.now();
   const id = createPhotoSetId(createdAt);
@@ -28,17 +51,27 @@ export async function savePhotoSet({
     backUri,
     frontUri,
     composedUri,
+    captureMode,
   });
+  const composedSize = await getImageSize(storedFiles.composedLocalUri)
+    .catch(() => getFallbackComposedSize(orientation));
   const composedAssetId = await saveComposedToMediaLibrary(storedFiles.composedLocalUri);
 
   const photoSet: PhotoSet = {
     id,
     createdAt,
+    captureMode,
+    orientation,
     backLocalUri: storedFiles.backLocalUri,
     frontLocalUri: storedFiles.frontLocalUri,
     composedLocalUri: storedFiles.composedLocalUri,
     composedAssetId,
     pattern,
+    composedWidth: composedSize.width,
+    composedHeight: composedSize.height,
+    frontImageFocusX: frontImageFocus?.x ?? null,
+    frontImageFocusY: frontImageFocus?.y ?? null,
+    frontImageScale: frontImageFocus?.scale ?? null,
     deletedAt: null,
   };
 

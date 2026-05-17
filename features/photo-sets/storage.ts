@@ -1,18 +1,21 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 
+import type { CaptureMode } from './types';
+
 const PHOTO_SET_ROOT_DIR = 'lifecube/photo-sets/';
 
 type CopyPhotoSetFilesInput = {
   id: string;
   backUri: string;
-  frontUri: string;
+  frontUri: string | null;
   composedUri: string;
+  captureMode: CaptureMode;
 };
 
 export type StoredPhotoSetFiles = {
   backLocalUri: string;
-  frontLocalUri: string;
+  frontLocalUri: string | null;
   composedLocalUri: string;
 };
 
@@ -32,11 +35,27 @@ export async function copyPhotoSetFiles({
   backUri,
   frontUri,
   composedUri,
+  captureMode,
 }: CopyPhotoSetFilesInput): Promise<StoredPhotoSetFiles> {
   const photoSetDirectory = getPhotoSetDirectory(id);
   await FileSystem.makeDirectoryAsync(photoSetDirectory, { intermediates: true });
 
   const backLocalUri = `${photoSetDirectory}back.jpg`;
+
+  if (captureMode === 'backOnly') {
+    await FileSystem.copyAsync({ from: backUri, to: backLocalUri });
+
+    return {
+      backLocalUri,
+      frontLocalUri: null,
+      composedLocalUri: backLocalUri,
+    };
+  }
+
+  if (!frontUri) {
+    throw new Error('前面写真がありません');
+  }
+
   const frontLocalUri = `${photoSetDirectory}front.jpg`;
   const composedLocalUri = `${photoSetDirectory}composed.png`;
 

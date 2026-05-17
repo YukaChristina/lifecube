@@ -18,8 +18,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getPhotoSetById, updatePhotoSetComposed } from '@/features/photo-sets/db';
 import { deleteSavedPhotoSet } from '@/features/photo-sets/save-photo-set';
-import type { PhotoSet, CompositePattern } from '@/features/photo-sets/types';
-import { composePhotos } from '@/utils/composePhoto';
+import { getPhotoSetDirectory } from '@/features/photo-sets/storage';
+import {
+  DEFAULT_FRONT_IMAGE_FOCUS,
+  type CompositePattern,
+  type PhotoSet,
+} from '@/features/photo-sets/types';
+import { composePhotos, getComposedPhotoSize } from '@/utils/composePhoto';
 
 type DetailMode = 'composed' | 'original';
 
@@ -37,6 +42,14 @@ async function fileExists(uri: string | null | undefined) {
   if (!uri) return false;
   const info = await FileSystem.getInfoAsync(uri);
   return info.exists;
+}
+
+function getFrontImageFocus(photoSet: PhotoSet) {
+  return {
+    x: photoSet.frontImageFocusX ?? DEFAULT_FRONT_IMAGE_FOCUS.x,
+    y: photoSet.frontImageFocusY ?? DEFAULT_FRONT_IMAGE_FOCUS.y,
+    scale: photoSet.frontImageScale ?? DEFAULT_FRONT_IMAGE_FOCUS.scale,
+  };
 }
 
 export default function PhotoSetDetailScreen() {
@@ -122,20 +135,72 @@ export default function PhotoSetDetailScreen() {
   }, [goBackToAlbum, isDeleting, photoSet]);
 
   const confirmDelete = useCallback(() => {
-    // ... (rest of the code is unchanged)
-  }, [deletePhotoSet]);
+    if (!photoSet || isDeleting) return;
+
+    Alert.alert(
+      '写真を削除しますか？',
+      'LifeCubeアルバムから削除します。端末の写真アプリに保存された画像は残ります。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: () => {
+            void deletePhotoSet();
+          },
+        },
+      ],
+    );
+  }, [deletePhotoSet, isDeleting, photoSet]);
 
   const handleUpdatePattern = async (newPattern: CompositePattern) => {
     if (!photoSet || isUpdatingPattern || !photoSet.backLocalUri || !photoSet.frontLocalUri) return;
 
+    let tempUri: string | null = null;
+    let copiedComposedUri: string | null = null;
     setIsUpdatingPattern(true);
     try {
-      const newUri = await composePhotos(photoSet.frontLocalUri, photoSet.backLocalUri, newPattern);
-      await updatePhotoSetComposed(photoSet.id, newUri, newPattern);
-      
+      const composedSize = getComposedPhotoSize(photoSet.orientation);
+      tempUri = await composePhotos(
+        photoSet.frontLocalUri,
+        photoSet.backLocalUri,
+        newPattern,
+        photoSet.orientation,
+        getFrontImageFocus(photoSet),
+      );
+      const composedLocalUri = `${getPhotoSetDirectory(photoSet.id)}composed-${Date.now()}.png`;
+      await FileSystem.copyAsync({ from: tempUri, to: composedLocalUri });
+      copiedComposedUri = composedLocalUri;
+      await FileSystem.deleteAsync(tempUri, { idempotent: true }).catch(() => undefined);
+      tempUri = null;
+      await updatePhotoSetComposed(
+        photoSet.id,
+        composedLocalUri,
+        newPattern,
+        composedSize.width,
+        composedSize.height,
+      );
+      copiedComposedUri = null;
+
       // 状態を更新
-      setPhotoSet(prev => prev ? { ...prev, composedLocalUri: newUri, pattern: newPattern } : null);
+      setPhotoSet(prev => prev ? {
+        ...prev,
+        composedLocalUri,
+        pattern: newPattern,
+        composedWidth: composedSize.width,
+        composedHeight: composedSize.height,
+      } : null);
+      if (photoSet.composedLocalUri !== composedLocalUri) {
+        await FileSystem.deleteAsync(photoSet.composedLocalUri, { idempotent: true })
+          .catch(() => undefined);
+      }
     } catch (err) {
+      if (tempUri) {
+        await FileSystem.deleteAsync(tempUri, { idempotent: true }).catch(() => undefined);
+      }
+      if (copiedComposedUri) {
+        await FileSystem.deleteAsync(copiedComposedUri, { idempotent: true }).catch(() => undefined);
+      }
       Alert.alert('更新に失敗しました', '画像の再合成中にエラーが発生しました。');
       console.error(err);
     } finally {
@@ -144,6 +209,9 @@ export default function PhotoSetDetailScreen() {
   };
 
   const imageMaxWidth = Math.min(width - 32, 420);
+  const canUpdatePattern = Boolean(
+    photoSet?.captureMode === 'dual' && photoSet.backLocalUri && photoSet.frontLocalUri,
+  );
 
   return (
     <View style={styles.container}>
@@ -175,12 +243,14 @@ export default function PhotoSetDetailScreen() {
             label="外側"
             uri={photoSet.backLocalUri}
             exists={originalAvailability.back}
+            orientation={photoSet.orientation}
             width={imageMaxWidth}
           />
           <OriginalPhoto
             label="内側"
-            uri={photoSet.frontLocalUri}
+            uri={photoSet.captureMode === 'dual' ? photoSet.frontLocalUri : null}
             exists={originalAvailability.front}
+            orientation={photoSet.orientation}
             width={imageMaxWidth}
           />
           <Pressable style={styles.returnButton} onPress={() => setMode('composed')}>
@@ -212,23 +282,25 @@ export default function PhotoSetDetailScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.patternSwitcher}>
-            <PatternButton 
-              active={photoSet.pattern === 'diagonal'} 
-              onPress={() => handleUpdatePattern('diagonal')}
-              label="斜め"
-            />
-            <PatternButton 
-              active={photoSet.pattern === 'circle'} 
-              onPress={() => handleUpdatePattern('circle')}
-              label="円形"
-            />
-            <PatternButton 
-              active={photoSet.pattern === 'split'} 
-              onPress={() => handleUpdatePattern('split')}
-              label="分割"
-            />
-          </View>
+          {canUpdatePattern ? (
+            <View style={styles.patternSwitcher}>
+              <PatternButton
+                active={photoSet.pattern === 'diagonal'}
+                onPress={() => handleUpdatePattern('diagonal')}
+                label="斜め"
+              />
+              <PatternButton
+                active={photoSet.pattern === 'circle'}
+                onPress={() => handleUpdatePattern('circle')}
+                label="円形"
+              />
+              <PatternButton
+                active={photoSet.pattern === 'split'}
+                onPress={() => handleUpdatePattern('split')}
+                label="分割"
+              />
+            </View>
+          ) : null}
 
           <View style={styles.actionArea}>
             <Pressable style={styles.actionButton} onPress={handleShare}>
@@ -266,24 +338,32 @@ function OriginalPhoto({
   label,
   uri,
   exists,
+  orientation,
   width,
 }: {
   label: string;
   uri: string | null;
   exists: boolean;
+  orientation: PhotoSet['orientation'];
   width: number;
 }) {
+  if (!uri && !exists) return null;
+
+  const height = orientation === 'landscape'
+    ? width * (9 / 16)
+    : width * (16 / 9);
+
   return (
     <View style={styles.originalBlock}>
       <Text style={styles.originalLabel}>{label}</Text>
       {exists && uri ? (
         <Image
           source={{ uri }}
-          style={[styles.originalImage, { width, height: width * (16 / 9) }]}
+          style={[styles.originalImage, { width, height }]}
           resizeMode="contain"
         />
       ) : (
-        <View style={[styles.originalMissing, { width, height: width * (16 / 9) }]}>
+        <View style={[styles.originalMissing, { width, height }]}>
           <Text style={styles.originalMissingText}>表示できません</Text>
         </View>
       )}

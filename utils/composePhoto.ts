@@ -1,48 +1,36 @@
 import { Skia, ClipOp, PaintStyle } from '@shopify/react-native-skia';
 import * as FileSystem from 'expo-file-system/legacy';
-import { CompositePattern } from '@/features/photo-sets/types';
+import {
+  DEFAULT_FRONT_IMAGE_FOCUS,
+  type CompositePattern,
+  type FrontImageFocus,
+  type PhotoOrientation,
+} from '@/features/photo-sets/types';
+import { makeDiagonalCompositionPaths } from '@/features/photo-sets/diagonal-composition';
 
 const PORTRAIT_WIDTH = 1080;
 const PORTRAIT_HEIGHT = 1920;
+const COMPOSITION_ACCENT_COLOR = '#F3B8C8';
 
 // デザイン定数（パステルカラーと透明度）
 const COLORS = {
-  diagonal: { color: '#F3B8C8', opacity: 0.82, width: 4 },
-  circle: { color: '#C8DFF2', opacity: 0.86, width: 4 },
-  split: { color: '#C7E6DC', opacity: 0.88, width: 6 },
+  diagonal: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
+  circle: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
+  split: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
 } as const;
 
 // 1. 斜めカット用パス
 function makeDiagonalPaths(W: number, H: number) {
-  const OUTPUT_WIDTH = W;
-  const OUTPUT_HEIGHT = H;
-  const cx1 = 0;
-  const cy1 = OUTPUT_HEIGHT * 0.33;
-  const cx2 = OUTPUT_WIDTH;
-  const cy2 = OUTPUT_HEIGHT * 0.67;
-  const startX = OUTPUT_WIDTH * 0.33;
-  const endX = OUTPUT_WIDTH * 0.67;
+  const paths = makeDiagonalCompositionPaths(W, H);
+  const curve = Skia.Path.MakeFromSVGString(paths.curvePath);
+  const outerClip = Skia.Path.MakeFromSVGString(paths.outerClipPath);
+  const innerClip = Skia.Path.MakeFromSVGString(paths.innerClipPath);
 
-  const curve = Skia.Path.Make();
-  curve.moveTo(startX, 0);
-  curve.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
+  if (!curve || !outerClip || !innerClip) {
+    throw new Error('斜めカット用パスの作成に失敗しました');
+  }
 
-  const leftClip = Skia.Path.Make();
-  leftClip.moveTo(0, 0);
-  leftClip.lineTo(startX, 0);
-  leftClip.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
-  leftClip.lineTo(0, OUTPUT_HEIGHT);
-  leftClip.close();
-
-  const rightClip = Skia.Path.Make();
-  rightClip.moveTo(startX, 0);
-  rightClip.lineTo(OUTPUT_WIDTH, 0);
-  rightClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  rightClip.lineTo(endX, OUTPUT_HEIGHT);
-  rightClip.cubicTo(cx2, cy2, cx1, cy1, startX, 0);
-  rightClip.close();
-
-  return { curve, leftClip, rightClip };
+  return { curve, outerClip, innerClip };
 }
 
 async function loadSkiaImage(uri: string) {
@@ -98,16 +86,79 @@ function drawImageToRect(
   );
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function drawImageToRectWithFocus(
+  canvas: ReturnType<NonNullable<ReturnType<typeof Skia.Surface.Make>>['getCanvas']>,
+  image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>,
+  targetRect: { x: number; y: number; width: number; height: number },
+  paint: ReturnType<typeof Skia.Paint>,
+  focus: FrontImageFocus,
+  baseZoom: number = 1.0,
+) {
+  const iW = image.width();
+  const iH = image.height();
+  const safeFocusX = clamp(focus.x, 0, 1);
+  const safeFocusY = clamp(focus.y, 0, 1);
+  const safeScale = Math.max(0.1, focus.scale);
+  const scale = Math.max(targetRect.width / iW, targetRect.height / iH) * baseZoom * safeScale;
+  const dW = iW * scale;
+  const dH = iH * scale;
+
+  const minX = targetRect.x + targetRect.width - dW;
+  const maxX = targetRect.x;
+  const minY = targetRect.y + targetRect.height - dH;
+  const maxY = targetRect.y;
+  const drawX = clamp(
+    targetRect.x + targetRect.width / 2 - dW * safeFocusX,
+    minX,
+    maxX,
+  );
+  const drawY = clamp(
+    targetRect.y + targetRect.height / 2 - dH * safeFocusY,
+    minY,
+    maxY,
+  );
+
+  canvas.drawImageRect(
+    image,
+    { x: 0, y: 0, width: iW, height: iH },
+    {
+      x: drawX,
+      y: drawY,
+      width: dW,
+      height: dH,
+    },
+    paint,
+  );
+}
+
+export function getComposedPhotoSize(orientation: PhotoOrientation) {
+  if (orientation === 'landscape') {
+    return {
+      width: PORTRAIT_HEIGHT,
+      height: PORTRAIT_WIDTH,
+    };
+  }
+
+  return {
+    width: PORTRAIT_WIDTH,
+    height: PORTRAIT_HEIGHT,
+  };
+}
+
 export async function composePhotos(
   frontUri: string,
   backUri: string,
   pattern: CompositePattern = 'diagonal',
-  orientation: 'portrait' | 'landscape' = 'portrait',
+  orientation: PhotoOrientation = 'portrait',
+  frontImageFocus: FrontImageFocus = DEFAULT_FRONT_IMAGE_FOCUS,
 ): Promise<string> {
   console.log(`[composePhotos] start pattern: ${pattern} orientation: ${orientation}`, { frontUri, backUri });
 
-  const OUTPUT_WIDTH = orientation === 'landscape' ? PORTRAIT_HEIGHT : PORTRAIT_WIDTH;
-  const OUTPUT_HEIGHT = orientation === 'landscape' ? PORTRAIT_WIDTH : PORTRAIT_HEIGHT;
+  const { width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT } = getComposedPhotoSize(orientation);
 
   const [frontImg, backImg] = await Promise.all([
     loadSkiaImage(frontUri),
@@ -122,18 +173,18 @@ export async function composePhotos(
 
   switch (pattern) {
     case 'diagonal': {
-      const { curve, leftClip, rightClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      const { curve, outerClip, innerClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const style = COLORS.diagonal;
 
-      // 背面写真 (右/後): 1.2倍ズームして右に寄せる
+      // 背面写真 (外側): 1.2倍ズームして右に寄せる
       canvas.save();
-      canvas.clipPath(rightClip, ClipOp.Intersect, true);
+      canvas.clipPath(outerClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
       canvas.restore();
 
-      // 前面写真 (左/前): 1.2倍ズームして左に寄せる
+      // 前面写真 (内側): 1.2倍ズームして左に寄せる
       canvas.save();
-      canvas.clipPath(leftClip, ClipOp.Intersect, true);
+      canvas.clipPath(innerClip, ClipOp.Intersect, true);
       drawImageToRect(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, -0.8, 1.2);
       canvas.restore();
 
@@ -162,13 +213,19 @@ export async function composePhotos(
       const circlePath = Skia.Path.Make();
       circlePath.addCircle(centerX, centerY, circleRadius);
       canvas.clipPath(circlePath, ClipOp.Intersect, true);
-      // 円形の中も中央寄せにする
-      drawImageToRect(canvas, frontImg, { 
-        x: centerX - circleRadius, 
-        y: centerY - circleRadius, 
-        width: circleRadius * 2, 
-        height: circleRadius * 2 
-      }, paint, 0, 1.1); // 少しだけズームして中央を強調
+      drawImageToRectWithFocus(
+        canvas,
+        frontImg,
+        {
+          x: centerX - circleRadius,
+          y: centerY - circleRadius,
+          width: circleRadius * 2,
+          height: circleRadius * 2,
+        },
+        paint,
+        frontImageFocus,
+        1.1,
+      );
       canvas.restore();
 
       // 3. 円の枠線

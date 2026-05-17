@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -13,28 +13,26 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ALBUM_GRID_COLUMNS,
+  createAlbumGridLayout,
+} from '@/features/photo-sets/album-tile-layout';
 import { listPhotoSets } from '@/features/photo-sets/db';
 import { groupPhotoSetsByDate } from '@/features/photo-sets/group-photo-sets';
 import type { PhotoSet } from '@/features/photo-sets/types';
 
-const NUM_COLUMNS = 3;
 const HORIZONTAL_PADDING = 20;
 const GRID_GAP = 6;
 
-type PhotoSetGridSection = {
-  title: string;
-  data: PhotoSet[][];
+type PhotoSetGridData = {
+  id: string;
+  photoSets: PhotoSet[];
 };
 
-function chunkPhotoSets(photoSets: PhotoSet[]) {
-  const rows: PhotoSet[][] = [];
-
-  for (let index = 0; index < photoSets.length; index += NUM_COLUMNS) {
-    rows.push(photoSets.slice(index, index + NUM_COLUMNS));
-  }
-
-  return rows;
-}
+type PhotoSetGridSection = {
+  title: string;
+  data: PhotoSetGridData[];
+};
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
@@ -43,8 +41,9 @@ export default function GalleryScreen() {
   const [sections, setSections] = useState<PhotoSetGridSection[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const thumbnailWidth =
-    (width - HORIZONTAL_PADDING * 2 - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
+  const tileSize =
+    (width - HORIZONTAL_PADDING * 2 - GRID_GAP * (ALBUM_GRID_COLUMNS - 1)) /
+    ALBUM_GRID_COLUMNS;
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -63,7 +62,7 @@ export default function GalleryScreen() {
       setSections(
         groupPhotoSetsByDate(visiblePhotoSets).map(group => ({
           title: group.title,
-          data: chunkPhotoSets(group.items),
+          data: [{ id: group.dateKey, photoSets: group.items }],
         })),
       );
       setErrorMessage(null);
@@ -98,7 +97,7 @@ export default function GalleryScreen() {
       ) : (
         <SectionList
           sections={sections}
-          keyExtractor={(item, index) => `${item[0]?.id ?? 'empty'}-${index}`}
+          keyExtractor={item => item.id}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={[
             styles.listContent,
@@ -108,27 +107,12 @@ export default function GalleryScreen() {
             <Text style={styles.sectionTitle}>{section.title}</Text>
           )}
           renderItem={({ item }) => (
-            <View style={styles.gridRow}>
-              {item.map(photoSet => (
-                <Pressable
-                  key={photoSet.id}
-                  onPress={() => openPhotoSet(photoSet)}
-                  style={({ pressed }) => [
-                    styles.thumbnailButton,
-                    {
-                      width: thumbnailWidth,
-                      height: thumbnailWidth * (16 / 9),
-                      opacity: pressed ? 0.78 : 1,
-                    },
-                  ]}>
-                  <Image
-                    source={{ uri: photoSet.composedLocalUri }}
-                    style={styles.thumbnail}
-                    resizeMode="cover"
-                  />
-                </Pressable>
-              ))}
-            </View>
+            <AlbumMosaicGrid
+              gap={GRID_GAP}
+              onPressPhotoSet={openPhotoSet}
+              photoSets={item.photoSets}
+              tileSize={tileSize}
+            />
           )}
         />
       )}
@@ -160,12 +144,12 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 8,
   },
-  gridRow: {
-    flexDirection: 'row',
-    gap: GRID_GAP,
-    marginBottom: GRID_GAP,
+  mosaicGrid: {
+    position: 'relative',
+    marginBottom: 12,
   },
   thumbnailButton: {
+    position: 'absolute',
     borderRadius: 7,
     borderWidth: 1,
     borderColor: '#DDEDEA',
@@ -190,3 +174,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+function AlbumMosaicGrid({
+  gap,
+  onPressPhotoSet,
+  photoSets,
+  tileSize,
+}: {
+  gap: number;
+  onPressPhotoSet: (photoSet: PhotoSet) => void;
+  photoSets: PhotoSet[];
+  tileSize: number;
+}) {
+  const layout = useMemo(() => createAlbumGridLayout(photoSets), [photoSets]);
+  const gridHeight =
+    layout.rowCount > 0
+      ? layout.rowCount * tileSize + (layout.rowCount - 1) * gap
+      : 0;
+
+  return (
+    <View style={[styles.mosaicGrid, { height: gridHeight }]}>
+      {layout.tiles.map(tile => {
+        const tileWidth = tile.columnSpan * tileSize + (tile.columnSpan - 1) * gap;
+        const tileHeight = tile.rowSpan * tileSize + (tile.rowSpan - 1) * gap;
+
+        return (
+          <Pressable
+            key={tile.photoSet.id}
+            onPress={() => onPressPhotoSet(tile.photoSet)}
+            style={({ pressed }) => [
+              styles.thumbnailButton,
+              {
+                height: tileHeight,
+                left: tile.column * (tileSize + gap),
+                opacity: pressed ? 0.78 : 1,
+                top: tile.row * (tileSize + gap),
+                width: tileWidth,
+              },
+            ]}>
+            <Image
+              source={{ uri: tile.photoSet.composedLocalUri }}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}

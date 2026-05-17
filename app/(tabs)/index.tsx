@@ -14,7 +14,7 @@ import { loadSettings, saveSettings } from '@/utils/settings';
 
 export default function CameraScreen() {
   const { width, height } = useWindowDimensions();
-  const orientation = width > height ? 'landscape' : 'portrait';
+  const screenOrientationFallback = width > height ? 'landscape' : 'portrait';
 
   const [backOnly, setBackOnly] = useState(false);
 
@@ -53,18 +53,18 @@ export default function CameraScreen() {
   } = useCapturePreviewSession({
     onPreviewStart: deactivateCamera,
     onReturnToCamera: activateCamera,
-    backOnly,
   });
 
   const {
     cameraRef,
     facing,
     isCapturing,
+    onCameraOrientationChange,
     takePhoto,
   } = useDualCameraCapture({
     onCaptured: startPreview,
     backOnly,
-    orientation,
+    screenOrientationFallback,
   });
 
   const voice = useShutterVoiceTrigger({
@@ -109,9 +109,9 @@ export default function CameraScreen() {
       cameraRef={cameraRef}
       facing={facing}
       isCapturing={isCapturing}
-      voiceListening={voice.listening}
       voiceUnavailable={voice.unavailable}
       backOnly={backOnly}
+      onCameraOrientationChange={onCameraOrientationChange}
       onTakePhoto={takePhoto}
       onToggleCameraMode={toggleCameraMode}
     />

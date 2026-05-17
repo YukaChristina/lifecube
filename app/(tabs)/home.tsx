@@ -1,20 +1,33 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Canvas, Circle, Path, Rect } from '@shopify/react-native-skia';
+import { ScrollView, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 import { loadSettings, saveSettings } from '@/utils/settings';
 import { CompositePattern } from '@/features/photo-sets/types';
+import { makeDiagonalCompositionPaths } from '@/features/photo-sets/diagonal-composition';
 
 const PATTERNS: { id: CompositePattern; label: string }[] = [
-  { id: 'diagonal', label: '斜めカット' },
   { id: 'circle', label: '円形くりぬき' },
+  { id: 'diagonal', label: '斜めカット' },
   { id: 'split', label: '左右分割' },
 ];
 
 const SCREEN_PADDING = 20;
+const PATTERN_GAP = 10;
+const PATTERN_CARD_ASPECT_RATIO = 9 / 16;
+const PATTERN_PREVIEW_BACK_FILL = '#EAF4F1';
+const PATTERN_PREVIEW_FRONT_FILL = '#FBE8EF';
+const PATTERN_PREVIEW_LINE = '#F3B8C8';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedPattern, setSelectedPattern] = useState<CompositePattern>('diagonal');
+  const { width } = useWindowDimensions();
+  const [selectedPattern, setSelectedPattern] = useState<CompositePattern>('circle');
+  const patternCardWidth = Math.max(
+    76,
+    (width - SCREEN_PADDING * 2 - PATTERN_GAP * 2) / 3,
+  );
+  const patternCardHeight = patternCardWidth / PATTERN_CARD_ASPECT_RATIO;
 
   useEffect(() => {
     loadSettings().then(s => setSelectedPattern(s.defaultPattern));
@@ -55,26 +68,14 @@ export default function HomeScreen() {
                 onPress={() => handleSelectPattern(pattern.id)}
                 style={[
                   styles.patternCard,
+                  { width: patternCardWidth, height: patternCardHeight },
                   isActive ? styles.patternCardActive : styles.patternCardInactive,
                 ]}>
-                {pattern.id === 'diagonal' ? (
-                  <>
-                    <View style={styles.diagonalPaneLeft} />
-                    <View style={styles.diagonalPaneRight} />
-                    <View style={styles.diagonalLine} />
-                  </>
-                ) : pattern.id === 'circle' ? (
-                  <>
-                    <View style={styles.circleBase} />
-                    <View style={styles.circleInset} />
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.splitLeft} />
-                    <View style={styles.splitDivider} />
-                    <View style={styles.splitRight} />
-                  </>
-                )}
+                <PatternPreview
+                  height={patternCardHeight}
+                  pattern={pattern.id}
+                  width={patternCardWidth}
+                />
                 {isActive && <View style={styles.activeIndicator} />}
               </Pressable>
             );
@@ -87,6 +88,64 @@ export default function HomeScreen() {
         <Text style={styles.bodyText}>準備中</Text>
       </View>
     </ScrollView>
+  );
+}
+
+function PatternPreview({
+  height,
+  pattern,
+  width,
+}: {
+  height: number;
+  pattern: CompositePattern;
+  width: number;
+}) {
+  if (pattern === 'diagonal') {
+    const { curvePath, outerClipPath, innerClipPath } = makeDiagonalCompositionPaths(width, height);
+
+    return (
+      <Canvas style={styles.patternCanvas}>
+        <Path path={outerClipPath} color={PATTERN_PREVIEW_BACK_FILL} />
+        <Path path={innerClipPath} color={PATTERN_PREVIEW_FRONT_FILL} />
+        <Path
+          path={curvePath}
+          color={PATTERN_PREVIEW_LINE}
+          style="stroke"
+          strokeWidth={2.2}
+        />
+      </Canvas>
+    );
+  }
+
+  if (pattern === 'circle') {
+    const radius = Math.min(width, height) * 0.25;
+    const centerX = width - radius - width * 0.07;
+    const centerY = height - radius - height * 0.08;
+
+    return (
+      <Canvas style={styles.patternCanvas}>
+        <Rect x={0} y={0} width={width} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
+        <Circle cx={centerX} cy={centerY} r={radius} color={PATTERN_PREVIEW_FRONT_FILL} />
+        <Circle
+          cx={centerX}
+          cy={centerY}
+          r={radius}
+          color={PATTERN_PREVIEW_LINE}
+          style="stroke"
+          strokeWidth={2.2}
+        />
+      </Canvas>
+    );
+  }
+
+  const dividerX = width / 2;
+
+  return (
+    <Canvas style={styles.patternCanvas}>
+      <Rect x={0} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
+      <Rect x={dividerX} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_FRONT_FILL} />
+      <Rect x={dividerX - 1.1} y={0} width={2.2} height={height} color={PATTERN_PREVIEW_LINE} />
+    </Canvas>
   );
 }
 
@@ -119,15 +178,16 @@ const styles = StyleSheet.create({
   },
   patternRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: PATTERN_GAP,
   },
   patternCard: {
-    flex: 1,
-    aspectRatio: 9 / 16,
     borderRadius: 8,
     borderWidth: 1.5,
     overflow: 'hidden',
     backgroundColor: '#FFF9FB',
+  },
+  patternCanvas: {
+    ...StyleSheet.absoluteFillObject,
   },
   patternCardActive: {
     borderColor: '#F3B8C8',
@@ -146,71 +206,5 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#F3B8C8',
-  },
-  diagonalPaneLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: '58%',
-    backgroundColor: 'rgba(243, 184, 200, 0.15)',
-    transform: [{ skewX: '-12deg' }],
-  },
-  diagonalPaneRight: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '60%',
-    backgroundColor: 'rgba(199, 230, 220, 0.15)',
-    transform: [{ skewX: '-12deg' }],
-  },
-  diagonalLine: {
-    position: 'absolute',
-    top: '-10%',
-    left: '48%',
-    width: 2,
-    height: '120%',
-    backgroundColor: '#F3B8C8',
-    transform: [{ rotate: '12deg' }],
-  },
-  circleBase: {
-    flex: 1,
-    backgroundColor: 'rgba(200, 223, 242, 0.15)',
-  },
-  circleInset: {
-    position: 'absolute',
-    right: 8,
-    bottom: 14,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#C8DFF2',
-    backgroundColor: 'rgba(243, 184, 200, 0.2)',
-  },
-  splitLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: '50%',
-    backgroundColor: 'rgba(243, 184, 200, 0.15)',
-  },
-  splitDivider: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: '48%',
-    width: 3,
-    backgroundColor: '#C7E6DC',
-  },
-  splitRight: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '50%',
-    backgroundColor: 'rgba(199, 230, 220, 0.15)',
   },
 });
