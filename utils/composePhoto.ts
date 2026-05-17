@@ -9,42 +9,45 @@ import {
 
 const PORTRAIT_WIDTH = 1080;
 const PORTRAIT_HEIGHT = 1920;
+const COMPOSITION_ACCENT_COLOR = '#F3B8C8';
 
 // デザイン定数（パステルカラーと透明度）
 const COLORS = {
-  diagonal: { color: '#F3B8C8', opacity: 0.82, width: 4 },
-  circle: { color: '#C8DFF2', opacity: 0.86, width: 4 },
-  split: { color: '#C7E6DC', opacity: 0.88, width: 6 },
+  diagonal: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
+  circle: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
+  split: { color: COMPOSITION_ACCENT_COLOR, opacity: 0.82, width: 4 },
 } as const;
 
 // 1. 斜めカット用パス
 function makeDiagonalPaths(W: number, H: number) {
   const OUTPUT_WIDTH = W;
   const OUTPUT_HEIGHT = H;
-  const cx1 = 0;
-  const cy1 = OUTPUT_HEIGHT * 0.33;
-  const cx2 = OUTPUT_WIDTH;
-  const cy2 = OUTPUT_HEIGHT * 0.67;
-  const startX = OUTPUT_WIDTH * 0.33;
-  const endX = OUTPUT_WIDTH * 0.67;
+  const startX = OUTPUT_WIDTH;
+  const startY = 0;
+  const endX = 0;
+  const endY = OUTPUT_HEIGHT;
+  const cx1 = OUTPUT_WIDTH;
+  const cy1 = OUTPUT_HEIGHT * 0.78;
+  const cx2 = 0;
+  const cy2 = OUTPUT_HEIGHT * 0.22;
 
   const curve = Skia.Path.Make();
-  curve.moveTo(startX, 0);
-  curve.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
+  curve.moveTo(startX, startY);
+  curve.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
 
   const leftClip = Skia.Path.Make();
   leftClip.moveTo(0, 0);
-  leftClip.lineTo(startX, 0);
-  leftClip.cubicTo(cx1, cy1, cx2, cy2, endX, OUTPUT_HEIGHT);
-  leftClip.lineTo(0, OUTPUT_HEIGHT);
+  leftClip.lineTo(startX, startY);
+  leftClip.cubicTo(cx1, cy1, cx2, cy2, endX, endY);
+  leftClip.lineTo(0, 0);
   leftClip.close();
 
   const rightClip = Skia.Path.Make();
-  rightClip.moveTo(startX, 0);
+  rightClip.moveTo(startX, startY);
   rightClip.lineTo(OUTPUT_WIDTH, 0);
   rightClip.lineTo(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  rightClip.lineTo(endX, OUTPUT_HEIGHT);
-  rightClip.cubicTo(cx2, cy2, cx1, cy1, startX, 0);
+  rightClip.lineTo(endX, endY);
+  rightClip.cubicTo(cx2, cy2, cx1, cy1, startX, startY);
   rightClip.close();
 
   return { curve, leftClip, rightClip };
