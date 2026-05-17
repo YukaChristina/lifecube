@@ -6,6 +6,8 @@ import type { PhotoOrientation } from '@/features/photo-sets/types';
 import { resolvePhotoOrientation } from './photo-orientation';
 import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
+const FRONT_CAMERA_READY_FALLBACK_MS = 1500;
+
 type UseDualCameraCaptureOptions = {
   onCaptured: (photos: CapturedPhotoPair) => void;
   backOnly?: boolean;
@@ -33,6 +35,14 @@ export function useDualCameraCapture({
   const screenOrientationFallbackRef = useRef(screenOrientationFallback);
   screenOrientationFallbackRef.current = screenOrientationFallback;
   const cameraOrientationRef = useRef<CameraOrientation | null>(null);
+  const frontReadyWaitStartedAtRef = useRef<number | null>(null);
+  const frontCaptureStartedRef = useRef(false);
+  const cameraReadySequenceRef = useRef(0);
+  const [cameraReadyEvent, setCameraReadyEvent] = useState<{
+    facing: CameraType;
+    sequence: number;
+    at: number;
+  } | null>(null);
 
   useEffect(() => {
     isCapturingRef.current = isCapturing;
@@ -47,11 +57,23 @@ export function useDualCameraCapture({
     setBackPhoto(null);
     setIsCapturing(false);
     isCapturingRef.current = false;
+    frontReadyWaitStartedAtRef.current = null;
+    frontCaptureStartedRef.current = false;
     resetToBackCamera();
   }, [resetToBackCamera]);
 
   const handleCameraOrientationChange = useCallback((cameraOrientation: CameraOrientation) => {
     cameraOrientationRef.current = cameraOrientation;
+  }, []);
+
+  const handleCameraReady = useCallback((readyFacing: CameraType) => {
+    const nextSequence = cameraReadySequenceRef.current + 1;
+    cameraReadySequenceRef.current = nextSequence;
+    setCameraReadyEvent({
+      facing: readyFacing,
+      sequence: nextSequence,
+      at: Date.now(),
+    });
   }, []);
 
   const takePhoto = useCallback(async () => {
@@ -86,20 +108,26 @@ export function useDualCameraCapture({
       uri: backResult.uri,
       orientation: backOrientation,
     });
+    frontCaptureStartedRef.current = false;
+    frontReadyWaitStartedAtRef.current = Date.now();
     setFacing('front');
-    setCaptureStep('capturingFront');
+    setCaptureStep('waitingFrontReady');
   }, [onCaptured, resetCaptureState]);
 
-  useEffect(() => {
-    if (captureStep !== 'capturingFront' || !backPhoto) return;
+  const captureFrontPhoto = useCallback(async () => {
+    if (!backPhoto || frontCaptureStartedRef.current) return;
 
-    const timer = setTimeout(async () => {
-      if (!cameraRef.current) {
-        resetCaptureState();
-        return;
-      }
+    if (!cameraRef.current) {
+      resetCaptureState();
+      return;
+    }
 
+    frontCaptureStartedRef.current = true;
+    setCaptureStep('capturingFront');
+
+    try {
       const frontResult = await cameraRef.current.takePictureAsync();
+
       if (frontResult?.uri) {
         onCaptured({
           back: backPhoto.uri,
@@ -108,18 +136,43 @@ export function useDualCameraCapture({
           orientation: backPhoto.orientation,
         });
       }
-
+    } finally {
       resetCaptureState();
-    }, 500);
+    }
+  }, [backPhoto, onCaptured, resetCaptureState]);
+
+  useEffect(() => {
+    if (
+      captureStep !== 'waitingFrontReady' ||
+      !backPhoto ||
+      !cameraReadyEvent ||
+      cameraReadyEvent.facing !== 'front'
+    ) {
+      return;
+    }
+
+    const waitStartedAt = frontReadyWaitStartedAtRef.current;
+    if (waitStartedAt != null && cameraReadyEvent.at < waitStartedAt) return;
+
+    void captureFrontPhoto();
+  }, [backPhoto, cameraReadyEvent, captureFrontPhoto, captureStep]);
+
+  useEffect(() => {
+    if (captureStep !== 'waitingFrontReady' || !backPhoto) return;
+
+    const timer = setTimeout(() => {
+      void captureFrontPhoto();
+    }, FRONT_CAMERA_READY_FALLBACK_MS);
 
     return () => clearTimeout(timer);
-  }, [backPhoto, captureStep, onCaptured, resetCaptureState]);
+  }, [backPhoto, captureFrontPhoto, captureStep]);
 
   return {
     cameraRef,
     facing,
     isCapturing,
     onCameraOrientationChange: handleCameraOrientationChange,
+    onCameraReady: handleCameraReady,
     resetToBackCamera,
     takePhoto,
   };

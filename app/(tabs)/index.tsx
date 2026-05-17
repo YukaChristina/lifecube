@@ -61,6 +61,7 @@ export default function CameraScreen() {
     facing,
     isCapturing,
     onCameraOrientationChange,
+    onCameraReady,
     takePhoto,
   } = useDualCameraCapture({
     onCaptured: startPreview,
@@ -114,6 +115,7 @@ export default function CameraScreen() {
       voiceUnavailable={voice.unavailable}
       backOnly={backOnly}
       onCameraOrientationChange={onCameraOrientationChange}
+      onCameraReady={onCameraReady}
       onTakePhoto={takePhoto}
       onToggleCameraMode={toggleCameraMode}
     />

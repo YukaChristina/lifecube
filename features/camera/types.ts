@@ -7,7 +7,7 @@ export type CapturedPhotoPair = {
   orientation: PhotoOrientation;
 };
 
-export type DualCameraCaptureStep = 'idle' | 'capturingFront';
+export type DualCameraCaptureStep = 'idle' | 'waitingFrontReady' | 'capturingFront';
 
 export type VoiceTriggerStatus = {
   listening: boolean;

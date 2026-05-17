@@ -12,6 +12,7 @@ type CameraLiveViewProps = {
   voiceUnavailable: boolean;
   backOnly: boolean;
   onCameraOrientationChange: (orientation: CameraOrientation) => void;
+  onCameraReady: (facing: CameraType) => void;
   onTakePhoto: () => void;
   onToggleCameraMode: () => void;
 };
@@ -23,6 +24,7 @@ export function CameraLiveView({
   voiceUnavailable,
   backOnly,
   onCameraOrientationChange,
+  onCameraReady,
   onTakePhoto,
   onToggleCameraMode,
 }: CameraLiveViewProps) {
@@ -38,6 +40,9 @@ export function CameraLiveView({
         facing={facing}
         ref={cameraRef}
         responsiveOrientationWhenOrientationLocked
+        onCameraReady={() => {
+          onCameraReady(facing);
+        }}
         onResponsiveOrientationChanged={({ orientation }) => {
           onCameraOrientationChange(orientation);
         }}
