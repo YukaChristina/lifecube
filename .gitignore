@@ -11,8 +11,6 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
-.expo/types/
-.expo/cache/
 
 # Native
 .kotlin/

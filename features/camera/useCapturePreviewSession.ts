@@ -10,6 +10,7 @@ import {
   type PhotoSet,
 } from '@/features/photo-sets/types';
 import { composePhotos } from '@/utils/composePhoto';
+import { detectFaceFocus } from '@/utils/detectFace';
 import { loadSettings } from '@/utils/settings';
 
 import type { CapturedPhotoPair } from './types';
@@ -112,16 +113,18 @@ export function useCapturePreviewSession({
     setIsComposing(true);
     frontImageFocusRef.current = DEFAULT_FRONT_IMAGE_FOCUS;
 
-    loadSettings().then(settings => {
-      activePatternRef.current = settings.defaultPattern;
-      return composePhotos(
-        photos.front as string,
-        photos.back,
-        settings.defaultPattern,
-        photos.orientation,
-        DEFAULT_FRONT_IMAGE_FOCUS,
-      );
-    })
+    Promise.all([loadSettings(), detectFaceFocus(photos.front as string)])
+      .then(([settings, detectedFocus]) => {
+        frontImageFocusRef.current = detectedFocus;
+        activePatternRef.current = settings.defaultPattern;
+        return composePhotos(
+          photos.front as string,
+          photos.back,
+          settings.defaultPattern,
+          photos.orientation,
+          detectedFocus,
+        );
+      })
       .then(uri => {
         if (
           previewSessionRef.current === sessionId &&
