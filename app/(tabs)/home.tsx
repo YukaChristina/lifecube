@@ -104,7 +104,7 @@ function PatternPreview({
     const { curvePath, outerClipPath, innerClipPath } = makeDiagonalCompositionPaths(width, height);
 
     return (
-      <Canvas style={styles.patternCanvas}>
+      <Canvas style={styles.patternCanvas} pointerEvents="none">
         <Path path={outerClipPath} color={PATTERN_PREVIEW_BACK_FILL} />
         <Path path={innerClipPath} color={PATTERN_PREVIEW_FRONT_FILL} />
         <Path
@@ -123,7 +123,7 @@ function PatternPreview({
     const centerY = height - radius - height * 0.08;
 
     return (
-      <Canvas style={styles.patternCanvas}>
+      <Canvas style={styles.patternCanvas} pointerEvents="none">
         <Rect x={0} y={0} width={width} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
         <Circle cx={centerX} cy={centerY} r={radius} color={PATTERN_PREVIEW_FRONT_FILL} />
         <Circle
@@ -141,7 +141,7 @@ function PatternPreview({
   const dividerX = width / 2;
 
   return (
-    <Canvas style={styles.patternCanvas}>
+    <Canvas style={styles.patternCanvas} pointerEvents="none">
       <Rect x={0} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_BACK_FILL} />
       <Rect x={dividerX} y={0} width={dividerX} height={height} color={PATTERN_PREVIEW_FRONT_FILL} />
       <Rect x={dividerX - 1.1} y={0} width={2.2} height={height} color={PATTERN_PREVIEW_LINE} />
