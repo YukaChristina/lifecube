@@ -23,20 +23,8 @@ type TileSpan = {
 
 type GridCell = boolean;
 
-function getTileSpan(photoSet: PhotoSet): TileSpan {
-  const aspectRatio = photoSet.composedHeight > 0
-    ? photoSet.composedWidth / photoSet.composedHeight
-    : 0;
-
-  if (Number.isFinite(aspectRatio) && aspectRatio >= 0.85 && aspectRatio <= 1.15) {
-    return { rowSpan: 1, columnSpan: 1 };
-  }
-
-  if (photoSet.orientation === 'landscape' || aspectRatio > 1) {
-    return { rowSpan: 1, columnSpan: 2 };
-  }
-
-  return { rowSpan: 2, columnSpan: 1 };
+function getTileSpan(_photoSet: PhotoSet): TileSpan {
+  return { rowSpan: 1, columnSpan: 1 };
 }
 
 function ensureRows(grid: GridCell[][], rowCount: number, columnCount: number) {

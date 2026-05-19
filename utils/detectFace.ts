@@ -5,10 +5,12 @@ import { DEFAULT_FRONT_IMAGE_FOCUS, type FrontImageFocus } from '@/features/phot
 const MAX_SCALE = 1.4;
 
 let detector: RNMLKitFaceDetector | null = null;
+let initPromise: Promise<void> | null = null;
 
 function getDetector(): RNMLKitFaceDetector {
   if (!detector) {
-    detector = new RNMLKitFaceDetector({ performanceMode: 'fast' });
+    detector = new RNMLKitFaceDetector({ performanceMode: 'fast' }, true);
+    initPromise = detector.initialize();
   }
   return detector;
 }
@@ -21,8 +23,10 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
 
 export async function detectFaceFocus(imageUri: string): Promise<FrontImageFocus> {
   try {
+    const det = getDetector();
+    await initPromise;
     const [result, imageSize] = await Promise.all([
-      getDetector().detectFaces(imageUri),
+      det.detectFaces(imageUri),
       getImageSize(imageUri),
     ]);
 
