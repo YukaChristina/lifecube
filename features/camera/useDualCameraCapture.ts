@@ -1,4 +1,5 @@
 import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PhotoOrientation } from '@/features/photo-sets/types';
@@ -7,6 +8,32 @@ import { resolvePhotoOrientation } from './photo-orientation';
 import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
 const FRONT_CAMERA_READY_FALLBACK_MS = 1500;
+
+// ネイティブカメラと同じ4:3にトリミング
+async function cropTo4x3(uri: string, width: number, height: number): Promise<string> {
+  const isPortrait = height >= width;
+  if (isPortrait) {
+    const targetHeight = Math.round(width * 4 / 3);
+    if (targetHeight >= height) return uri;
+    const originY = Math.round((height - targetHeight) / 2);
+    const result = await manipulateAsync(
+      uri,
+      [{ crop: { originX: 0, originY, width, height: targetHeight } }],
+      { compress: 1, format: SaveFormat.JPEG },
+    );
+    return result.uri;
+  } else {
+    const targetWidth = Math.round(height * 4 / 3);
+    if (targetWidth >= width) return uri;
+    const originX = Math.round((width - targetWidth) / 2);
+    const result = await manipulateAsync(
+      uri,
+      [{ crop: { originX, originY: 0, width: targetWidth, height } }],
+      { compress: 1, format: SaveFormat.JPEG },
+    );
+    return result.uri;
+  }
+}
 
 type UseDualCameraCaptureOptions = {
   onCaptured: (photos: CapturedPhotoPair) => void;
@@ -87,6 +114,8 @@ export function useDualCameraCapture({
       return;
     }
 
+    const backUri = await cropTo4x3(backResult.uri, backResult.width, backResult.height);
+
     const backOrientation = resolvePhotoOrientation({
       cameraOrientation: cameraOrientationRef.current,
       photoSize: backResult,
@@ -95,7 +124,7 @@ export function useDualCameraCapture({
 
     if (backOnlyRef.current) {
       onCaptured({
-        back: backResult.uri,
+        back: backUri,
         front: null,
         captureMode: 'backOnly',
         orientation: backOrientation,
@@ -105,7 +134,7 @@ export function useDualCameraCapture({
     }
 
     setBackPhoto({
-      uri: backResult.uri,
+      uri: backUri,
       orientation: backOrientation,
     });
     frontCaptureStartedRef.current = false;
@@ -129,9 +158,10 @@ export function useDualCameraCapture({
       const frontResult = await cameraRef.current.takePictureAsync();
 
       if (frontResult?.uri) {
+        const frontUri = await cropTo4x3(frontResult.uri, frontResult.width, frontResult.height);
         onCaptured({
           back: backPhoto.uri,
-          front: frontResult.uri,
+          front: frontUri,
           captureMode: 'dual',
           orientation: backPhoto.orientation,
         });
