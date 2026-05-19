@@ -182,10 +182,10 @@ export async function composePhotos(
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
       canvas.restore();
 
-      // 前面写真 (内側): 1.2倍ズームして左に寄せる
+      // 前面写真 (内側): 顔フォーカスを使って中心に寄せる
       canvas.save();
       canvas.clipPath(innerClip, ClipOp.Intersect, true);
-      drawImageToRect(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, -0.8, 1.2);
+      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.2);
       canvas.restore();
 
       // 境界線
@@ -249,10 +249,10 @@ export async function composePhotos(
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, 0.4, 1.1);
       canvas.restore();
 
-      // 右側: 前面写真
+      // 右側: 前面写真（顔フォーカスで右半分内に収める）
       canvas.save();
       canvas.clipRect({ x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
-      drawImageToRect(canvas, frontImg, { x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, -0.4, 1.1);
+      drawImageToRectWithFocus(canvas, frontImg, { x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.1);
       canvas.restore();
 
       // 境界線

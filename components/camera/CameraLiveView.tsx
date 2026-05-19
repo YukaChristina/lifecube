@@ -1,6 +1,6 @@
 import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
 import type { RefObject } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureSwitchingOverlay } from './CaptureSwitchingOverlay';
@@ -17,6 +17,8 @@ type CameraLiveViewProps = {
   onToggleCameraMode: () => void;
 };
 
+const CONTROLS_WIDTH = 96;
+
 export function CameraLiveView({
   cameraRef,
   facing,
@@ -29,9 +31,40 @@ export function CameraLiveView({
   onToggleCameraMode,
 }: CameraLiveViewProps) {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
+  // 横向き時: ノッチ側（insetが大きい方）の反対側が充電口
+  const chargingPortOnRight = isLandscape && insets.left >= insets.right;
+
   const voiceGuideText = voiceUnavailable
     ? '音声の許可が必要です'
     : '「シャッター」と言うと撮影します';
+
+  const controlsStyle = isLandscape
+    ? {
+        ...(chargingPortOnRight
+          ? { right: 0, paddingRight: Math.max(insets.right, 12) + 12 }
+          : { left: 0, paddingLeft: Math.max(insets.left, 12) + 12 }),
+        top: 0,
+        bottom: 0,
+        width: CONTROLS_WIDTH,
+        flexDirection: 'column' as const,
+        justifyContent: 'space-around' as const,
+        paddingVertical: 32,
+        paddingTop: Math.max(insets.top, 32),
+        paddingBottom: Math.max(insets.bottom, 32),
+      }
+    : {
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: 'row' as const,
+        justifyContent: 'space-between' as const,
+        paddingBottom: Math.max(insets.bottom, 20) + 16,
+        paddingLeft: insets.left + 24,
+        paddingRight: insets.right + 24,
+      };
 
   return (
     <View style={styles.container}>
@@ -56,15 +89,7 @@ export function CameraLiveView({
 
       {isCapturing && !backOnly && <CaptureSwitchingOverlay />}
 
-      <View
-        style={[
-          styles.cameraControls,
-          {
-            paddingBottom: Math.max(insets.bottom, 20) + 16,
-            paddingLeft: insets.left + 24,
-            paddingRight: insets.right + 24,
-          },
-        ]}>
+      <View style={[styles.cameraControls, controlsStyle]}>
         <TouchableOpacity
           style={[styles.modeToggle, backOnly && styles.modeToggleActive]}
           onPress={onToggleCameraMode}>
@@ -75,7 +100,7 @@ export function CameraLiveView({
           onPress={onTakePhoto}
           disabled={isCapturing}
         />
-        <View style={styles.controlSpacer} />
+        <View style={isLandscape ? styles.controlSpacerV : styles.controlSpacer} />
       </View>
     </View>
   );
@@ -112,17 +137,15 @@ const styles = StyleSheet.create({
   },
   cameraControls: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 18,
     backgroundColor: 'rgba(255,250,252,0.28)',
   },
   controlSpacer: {
     width: 68,
+  },
+  controlSpacerV: {
+    height: 42,
   },
   modeToggle: {
     width: 68,
