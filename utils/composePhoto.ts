@@ -54,34 +54,21 @@ function drawImageToRect(
   image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>,
   targetRect: { x: number; y: number; width: number; height: number },
   paint: ReturnType<typeof Skia.Paint>,
-  offsetPctX: number = 0,
-  zoom: number = 1.0,
+  resizeMode: 'cover' | 'contain' = 'cover',
 ) {
   const iW = image.width();
   const iH = image.height();
-  const scale = Math.max(targetRect.width / iW, targetRect.height / iH) * zoom;
+  const scaleFn = resizeMode === 'contain' ? Math.min : Math.max;
+  const scale = scaleFn(targetRect.width / iW, targetRect.height / iH);
   const dW = iW * scale;
   const dH = iH * scale;
-  
-  // 基本の中央位置
-  let drawX = targetRect.x + (targetRect.width - dW) / 2;
+  const drawX = targetRect.x + (targetRect.width - dW) / 2;
   const drawY = targetRect.y + (targetRect.height - dH) / 2;
-
-  // オフセット適用（余白がある場合のみ）
-  if (dW > targetRect.width) {
-    const maxOffset = (dW - targetRect.width) / 2;
-    drawX += maxOffset * offsetPctX;
-  }
 
   canvas.drawImageRect(
     image,
     { x: 0, y: 0, width: iW, height: iH },
-    {
-      x: drawX,
-      y: drawY,
-      width: dW,
-      height: dH,
-    },
+    { x: drawX, y: drawY, width: dW, height: dH },
     paint,
   );
 }
@@ -178,7 +165,7 @@ export async function composePhotos(
 
       canvas.save();
       canvas.clipPath(outerClip, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
       canvas.restore();
 
       canvas.save();
@@ -204,7 +191,7 @@ export async function composePhotos(
       const centerY = OUTPUT_HEIGHT - circleRadius - OUTPUT_HEIGHT * 0.08;
 
       // 1. 背面写真を全画面に
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
 
       // 2. 内側写真を円形でクリップして重ねる
       canvas.save();
@@ -244,7 +231,7 @@ export async function composePhotos(
       // 左側: 背面写真
       canvas.save();
       canvas.clipRect({ x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
       canvas.restore();
 
       canvas.save();
