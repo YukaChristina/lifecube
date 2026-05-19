@@ -176,16 +176,14 @@ export async function composePhotos(
       const { curve, outerClip, innerClip } = makeDiagonalPaths(OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const style = COLORS.diagonal;
 
-      // 背面写真 (外側): 1.2倍ズームして右に寄せる
       canvas.save();
       canvas.clipPath(outerClip, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 0.8, 1.2);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
       canvas.restore();
 
-      // 前面写真 (内側): 顔フォーカスを使って中心に寄せる
       canvas.save();
       canvas.clipPath(innerClip, ClipOp.Intersect, true);
-      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.2);
+      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0);
       canvas.restore();
 
       // 境界線
@@ -224,7 +222,7 @@ export async function composePhotos(
         },
         paint,
         frontImageFocus,
-        1.1,
+        1.0,
       );
       canvas.restore();
 
@@ -246,13 +244,12 @@ export async function composePhotos(
       // 左側: 背面写真
       canvas.save();
       canvas.clipRect({ x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, 0.4, 1.1);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint);
       canvas.restore();
 
-      // 右側: 前面写真（顔フォーカスで右半分内に収める）
       canvas.save();
       canvas.clipRect({ x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
-      drawImageToRectWithFocus(canvas, frontImg, { x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.1);
+      drawImageToRectWithFocus(canvas, frontImg, { x: dividerX, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0);
       canvas.restore();
 
       // 境界線

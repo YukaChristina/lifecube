@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PhotoOrientation } from '@/features/photo-sets/types';
 
-import { resolvePhotoOrientation } from './photo-orientation';
+import { getPhotoOrientationFromSize } from './photo-orientation';
 import type { CapturedPhotoPair, DualCameraCaptureStep } from './types';
 
 const FRONT_CAMERA_READY_FALLBACK_MS = 1500;
@@ -116,11 +116,7 @@ export function useDualCameraCapture({
 
     const backUri = await cropTo4x3(backResult.uri, backResult.width, backResult.height);
 
-    const backOrientation = resolvePhotoOrientation({
-      cameraOrientation: cameraOrientationRef.current,
-      photoSize: backResult,
-      screenOrientationFallback: screenOrientationFallbackRef.current,
-    });
+    const backOrientation = getPhotoOrientationFromSize(backResult, screenOrientationFallbackRef.current);
 
     if (backOnlyRef.current) {
       onCaptured({
