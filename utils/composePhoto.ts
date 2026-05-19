@@ -84,6 +84,7 @@ function drawImageToRectWithFocus(
   paint: ReturnType<typeof Skia.Paint>,
   focus: FrontImageFocus,
   baseZoom: number = 1.0,
+  faceAnchor?: { x: number; y: number },
 ) {
   const iW = image.width();
   const iH = image.height();
@@ -98,16 +99,10 @@ function drawImageToRectWithFocus(
   const maxX = targetRect.x;
   const minY = targetRect.y + targetRect.height - dH;
   const maxY = targetRect.y;
-  const drawX = clamp(
-    targetRect.x + targetRect.width / 2 - dW * safeFocusX,
-    minX,
-    maxX,
-  );
-  const drawY = clamp(
-    targetRect.y + targetRect.height / 2 - dH * safeFocusY,
-    minY,
-    maxY,
-  );
+  const anchorX = faceAnchor?.x ?? (targetRect.x + targetRect.width / 2);
+  const anchorY = faceAnchor?.y ?? (targetRect.y + targetRect.height / 2);
+  const drawX = clamp(anchorX - dW * safeFocusX, minX, maxX);
+  const drawY = clamp(anchorY - dH * safeFocusY, minY, maxY);
 
   canvas.drawImageRect(
     image,
@@ -168,9 +163,14 @@ export async function composePhotos(
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
       canvas.restore();
 
+      const isPortrait = OUTPUT_HEIGHT >= OUTPUT_WIDTH;
+      const faceAnchor = {
+        x: isPortrait ? OUTPUT_WIDTH * 0.75 : OUTPUT_WIDTH * 0.25,
+        y: OUTPUT_HEIGHT * 0.75,
+      };
       canvas.save();
       canvas.clipPath(innerClip, ClipOp.Intersect, true);
-      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0);
+      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0, faceAnchor);
       canvas.restore();
 
       // 境界線
