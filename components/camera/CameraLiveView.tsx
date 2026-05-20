@@ -159,7 +159,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     paddingTop: 18,
-    backgroundColor: 'rgba(255,250,252,0.28)',
   },
   controlSpacer: {
     width: 68,

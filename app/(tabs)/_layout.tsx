@@ -1,5 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -8,9 +10,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const isLandscape = width > height;
+  const chargingPortOnRight = isLandscape && insets.left >= insets.right;
+  const tabBarPosition = isLandscape ? (chargingPortOnRight ? 'right' : 'left') : 'bottom';
 
   return (
     <Tabs
+      tabBarPosition={tabBarPosition}
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,

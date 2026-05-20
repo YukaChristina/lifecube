@@ -186,9 +186,20 @@ export async function composePhotos(
 
     case 'circle': {
       const style = COLORS.circle;
-      const circleRadius = Math.min(OUTPUT_WIDTH, OUTPUT_HEIGHT) * 0.25;
-      const centerX = OUTPUT_WIDTH - circleRadius - OUTPUT_WIDTH * 0.07;
-      const centerY = OUTPUT_HEIGHT - circleRadius - OUTPUT_HEIGHT * 0.08;
+
+      // 背面画像の contain 後の実際の表示範囲を計算
+      const bW = backImg.width();
+      const bH = backImg.height();
+      const backScale = Math.min(OUTPUT_WIDTH / bW, OUTPUT_HEIGHT / bH);
+      const backRenderW = bW * backScale;
+      const backRenderH = bH * backScale;
+      const backX = (OUTPUT_WIDTH - backRenderW) / 2;
+      const backY = (OUTPUT_HEIGHT - backRenderH) / 2;
+
+      // 円を背面画像の内側に配置（右下寄り、マージン7%）
+      const circleRadius = Math.min(backRenderW, backRenderH) * 0.25;
+      const centerX = backX + backRenderW - circleRadius - backRenderW * 0.07;
+      const centerY = backY + backRenderH - circleRadius - backRenderH * 0.08;
 
       // 1. 背面写真を全画面に
       drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
