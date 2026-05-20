@@ -24,6 +24,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        // 'material' variant は left/right 配置に必須（uikit は bottom/top のみ対応）
+        tabBarVariant: isLandscape ? 'material' : 'uikit',
       }}>
       <Tabs.Screen
         name="index"
