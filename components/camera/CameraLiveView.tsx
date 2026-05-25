@@ -34,6 +34,12 @@ export function CameraLiveView({
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
+  // 4:3の撮影範囲外を示すオーバーレイの厚み計算
+  const captureAspect = 4 / 3;
+  const overlayThickness = isLandscape
+    ? Math.max(0, (width - height * captureAspect) / 2)
+    : Math.max(0, (height - width * captureAspect) / 2);
+
   // 横向き時: ノッチ側（insetが大きい方）の反対側が充電口
   const chargingPortOnRight = isLandscape && insets.left >= insets.right;
 
@@ -87,6 +93,20 @@ export function CameraLiveView({
         </Text>
       </View>
 
+      {/* 4:3撮影範囲外オーバーレイ */}
+      {overlayThickness > 0 && isLandscape && (
+        <>
+          <View style={[styles.captureOverlay, { left: 0, top: 0, bottom: 0, width: overlayThickness }]} />
+          <View style={[styles.captureOverlay, { right: 0, top: 0, bottom: 0, width: overlayThickness }]} />
+        </>
+      )}
+      {overlayThickness > 0 && !isLandscape && (
+        <>
+          <View style={[styles.captureOverlay, { top: 0, left: 0, right: 0, height: overlayThickness }]} />
+          <View style={[styles.captureOverlay, { bottom: 0, left: 0, right: 0, height: overlayThickness }]} />
+        </>
+      )}
+
       {isCapturing && !backOnly && <CaptureSwitchingOverlay />}
 
       <View style={[styles.cameraControls, controlsStyle]}>
@@ -139,7 +159,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     paddingTop: 18,
-    backgroundColor: 'rgba(255,250,252,0.28)',
   },
   controlSpacer: {
     width: 68,
@@ -176,5 +195,9 @@ const styles = StyleSheet.create({
   },
   shutterDisabled: {
     opacity: 0.40,
+  },
+  captureOverlay: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
 });

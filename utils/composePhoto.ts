@@ -54,34 +54,21 @@ function drawImageToRect(
   image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>,
   targetRect: { x: number; y: number; width: number; height: number },
   paint: ReturnType<typeof Skia.Paint>,
-  offsetPctX: number = 0,
-  zoom: number = 1.0,
+  resizeMode: 'cover' | 'contain' = 'cover',
 ) {
   const iW = image.width();
   const iH = image.height();
-  const scale = Math.max(targetRect.width / iW, targetRect.height / iH) * zoom;
+  const scaleFn = resizeMode === 'contain' ? Math.min : Math.max;
+  const scale = scaleFn(targetRect.width / iW, targetRect.height / iH);
   const dW = iW * scale;
   const dH = iH * scale;
-  
-  // 基本の中央位置
-  let drawX = targetRect.x + (targetRect.width - dW) / 2;
+  const drawX = targetRect.x + (targetRect.width - dW) / 2;
   const drawY = targetRect.y + (targetRect.height - dH) / 2;
-
-  // オフセット適用（余白がある場合のみ）
-  if (dW > targetRect.width) {
-    const maxOffset = (dW - targetRect.width) / 2;
-    drawX += maxOffset * offsetPctX;
-  }
 
   canvas.drawImageRect(
     image,
     { x: 0, y: 0, width: iW, height: iH },
-    {
-      x: drawX,
-      y: drawY,
-      width: dW,
-      height: dH,
-    },
+    { x: drawX, y: drawY, width: dW, height: dH },
     paint,
   );
 }
@@ -97,6 +84,7 @@ function drawImageToRectWithFocus(
   paint: ReturnType<typeof Skia.Paint>,
   focus: FrontImageFocus,
   baseZoom: number = 1.0,
+  faceAnchor?: { x: number; y: number },
 ) {
   const iW = image.width();
   const iH = image.height();
@@ -111,16 +99,10 @@ function drawImageToRectWithFocus(
   const maxX = targetRect.x;
   const minY = targetRect.y + targetRect.height - dH;
   const maxY = targetRect.y;
-  const drawX = clamp(
-    targetRect.x + targetRect.width / 2 - dW * safeFocusX,
-    minX,
-    maxX,
-  );
-  const drawY = clamp(
-    targetRect.y + targetRect.height / 2 - dH * safeFocusY,
-    minY,
-    maxY,
-  );
+  const anchorX = faceAnchor?.x ?? (targetRect.x + targetRect.width / 2);
+  const anchorY = faceAnchor?.y ?? (targetRect.y + targetRect.height / 2);
+  const drawX = clamp(anchorX - dW * safeFocusX, minX, maxX);
+  const drawY = clamp(anchorY - dH * safeFocusY, minY, maxY);
 
   canvas.drawImageRect(
     image,
@@ -178,12 +160,17 @@ export async function composePhotos(
 
       canvas.save();
       canvas.clipPath(outerClip, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
       canvas.restore();
 
+      const isPortrait = OUTPUT_HEIGHT >= OUTPUT_WIDTH;
+      const faceAnchor = {
+        x: isPortrait ? OUTPUT_WIDTH * 0.75 : OUTPUT_WIDTH * 0.25,
+        y: OUTPUT_HEIGHT * 0.75,
+      };
       canvas.save();
       canvas.clipPath(innerClip, ClipOp.Intersect, true);
-      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0);
+      drawImageToRectWithFocus(canvas, frontImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, frontImageFocus, 1.0, faceAnchor);
       canvas.restore();
 
       // 境界線
@@ -199,12 +186,23 @@ export async function composePhotos(
 
     case 'circle': {
       const style = COLORS.circle;
-      const circleRadius = Math.min(OUTPUT_WIDTH, OUTPUT_HEIGHT) * 0.25;
-      const centerX = OUTPUT_WIDTH - circleRadius - OUTPUT_WIDTH * 0.07;
-      const centerY = OUTPUT_HEIGHT - circleRadius - OUTPUT_HEIGHT * 0.08;
+
+      // 背面画像の contain 後の実際の表示範囲を計算
+      const bW = backImg.width();
+      const bH = backImg.height();
+      const backScale = Math.min(OUTPUT_WIDTH / bW, OUTPUT_HEIGHT / bH);
+      const backRenderW = bW * backScale;
+      const backRenderH = bH * backScale;
+      const backX = (OUTPUT_WIDTH - backRenderW) / 2;
+      const backY = (OUTPUT_HEIGHT - backRenderH) / 2;
+
+      // 円を背面画像の内側に配置（右下寄り、マージン7%）
+      const circleRadius = Math.min(backRenderW, backRenderH) * 0.25;
+      const centerX = backX + backRenderW - circleRadius - backRenderW * 0.07;
+      const centerY = backY + backRenderH - circleRadius - backRenderH * 0.08;
 
       // 1. 背面写真を全画面に
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
 
       // 2. 内側写真を円形でクリップして重ねる
       canvas.save();
@@ -244,7 +242,7 @@ export async function composePhotos(
       // 左側: 背面写真
       canvas.save();
       canvas.clipRect({ x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, ClipOp.Intersect, true);
-      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: dividerX, height: OUTPUT_HEIGHT }, paint);
+      drawImageToRect(canvas, backImg, { x: 0, y: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT }, paint, 'contain');
       canvas.restore();
 
       canvas.save();

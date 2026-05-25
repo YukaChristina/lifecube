@@ -2,8 +2,6 @@ import { Image } from 'react-native';
 import { RNMLKitFaceDetector } from '@infinitered/react-native-mlkit-face-detection';
 import { DEFAULT_FRONT_IMAGE_FOCUS, type FrontImageFocus } from '@/features/photo-sets/types';
 
-const MAX_SCALE = 1.4;
-
 let detector: RNMLKitFaceDetector | null = null;
 let initPromise: Promise<void> | null = null;
 
@@ -30,7 +28,7 @@ export async function detectFaceFocus(imageUri: string): Promise<FrontImageFocus
       getImageSize(imageUri),
     ]);
 
-    if (!result?.success || !result.faces.length) return DEFAULT_FRONT_IMAGE_FOCUS;
+    if (!result?.faces?.length) return DEFAULT_FRONT_IMAGE_FOCUS;
 
     const largest = result.faces.reduce((best, face) => {
       const area = face.frame.size.x * face.frame.size.y;
@@ -45,11 +43,7 @@ export async function detectFaceFocus(imageUri: string): Promise<FrontImageFocus
     const x = centerX / imageSize.width;
     const y = centerY / imageSize.height;
 
-    // 顔が小さいほど拡大率を上げる（上限 1.4）
-    const faceRatio = Math.max(frame.size.x / imageSize.width, frame.size.y / imageSize.height);
-    const scale = Math.min(MAX_SCALE, Math.max(1.0, 0.25 / faceRatio));
-
-    return { x, y, scale };
+    return { x, y, scale: 1.0 };
   } catch {
     return DEFAULT_FRONT_IMAGE_FOCUS;
   }
