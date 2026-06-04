@@ -1,5 +1,5 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useWindowDimensions } from 'react-native';
 
 import { CameraLiveView } from '@/components/camera/CameraLiveView';
@@ -10,28 +10,15 @@ import { useCameraPermissionFlow } from '@/features/camera/useCameraPermissionFl
 import { useCapturePreviewSession } from '@/features/camera/useCapturePreviewSession';
 import { useDualCameraCapture } from '@/features/camera/useDualCameraCapture';
 import { useShutterVoiceTrigger } from '@/features/camera/useShutterVoiceTrigger';
-import { loadSettings, saveSettings } from '@/utils/settings';
 
 export default function CameraScreen() {
   const { width, height } = useWindowDimensions();
   const screenOrientationFallback = width > height ? 'landscape' : 'portrait';
 
-  const [backOnly, setBackOnly] = useState(false);
-
   useEffect(() => {
     void activateKeepAwakeAsync();
     return () => { void deactivateKeepAwake(); };
   }, []);
-
-  useEffect(() => {
-    loadSettings().then(s => setBackOnly(s.cameraMode === 'back-only'));
-  }, []);
-
-  const toggleCameraMode = useCallback(async () => {
-    const next = !backOnly;
-    setBackOnly(next);
-    await saveSettings({ cameraMode: next ? 'back-only' : 'dual' });
-  }, [backOnly]);
 
   const {
     activateCamera,
@@ -63,9 +50,10 @@ export default function CameraScreen() {
     onCameraOrientationChange,
     onCameraReady,
     takePhoto,
+    toggleFacing,
   } = useDualCameraCapture({
     onCaptured: startPreview,
-    backOnly,
+    backOnly: true,
     screenOrientationFallback,
   });
 
@@ -75,7 +63,6 @@ export default function CameraScreen() {
     onTrigger: takePhoto,
   });
 
-  // ── プレビュー画面 ────────────────────────────────────────────
   if (previewVisible) {
     return (
       <CapturePreview
@@ -113,11 +100,10 @@ export default function CameraScreen() {
       facing={facing}
       isCapturing={isCapturing}
       voiceUnavailable={voice.unavailable}
-      backOnly={backOnly}
       onCameraOrientationChange={onCameraOrientationChange}
       onCameraReady={onCameraReady}
       onTakePhoto={takePhoto}
-      onToggleCameraMode={toggleCameraMode}
+      onToggleFacing={toggleFacing}
     />
   );
 }

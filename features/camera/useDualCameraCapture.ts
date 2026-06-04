@@ -51,7 +51,7 @@ export function useDualCameraCapture({
   backOnly = false,
   screenOrientationFallback = 'portrait',
 }: UseDualCameraCaptureOptions) {
-  const [facing, setFacing] = useState<CameraType>('back');
+  const [facing, setFacing] = useState<CameraType>('front');
   const [captureStep, setCaptureStep] = useState<DualCameraCaptureStep>('idle');
   const [backPhoto, setBackPhoto] = useState<CapturedBackPhoto | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -193,6 +193,10 @@ export function useDualCameraCapture({
     return () => clearTimeout(timer);
   }, [backPhoto, captureFrontPhoto, captureStep]);
 
+  const toggleFacing = useCallback(() => {
+    setFacing(f => f === 'front' ? 'back' : 'front');
+  }, []);
+
   return {
     cameraRef,
     facing,
@@ -201,5 +205,6 @@ export function useDualCameraCapture({
     onCameraReady: handleCameraReady,
     resetToBackCamera,
     takePhoto,
+    toggleFacing,
   };
 }

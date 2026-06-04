@@ -3,18 +3,15 @@ import type { RefObject } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CaptureSwitchingOverlay } from './CaptureSwitchingOverlay';
-
 type CameraLiveViewProps = {
   cameraRef: RefObject<CameraView | null>;
   facing: CameraType;
   isCapturing: boolean;
   voiceUnavailable: boolean;
-  backOnly: boolean;
   onCameraOrientationChange: (orientation: CameraOrientation) => void;
   onCameraReady: (facing: CameraType) => void;
   onTakePhoto: () => void;
-  onToggleCameraMode: () => void;
+  onToggleFacing: () => void;
 };
 
 const CONTROLS_WIDTH = 96;
@@ -24,23 +21,20 @@ export function CameraLiveView({
   facing,
   isCapturing,
   voiceUnavailable,
-  backOnly,
   onCameraOrientationChange,
   onCameraReady,
   onTakePhoto,
-  onToggleCameraMode,
+  onToggleFacing,
 }: CameraLiveViewProps) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
-  // 4:3の撮影範囲外を示すオーバーレイの厚み計算
   const captureAspect = 4 / 3;
   const overlayThickness = isLandscape
     ? Math.max(0, (width - height * captureAspect) / 2)
     : Math.max(0, (height - width * captureAspect) / 2);
 
-  // 横向き時: ノッチ側（insetが大きい方）の反対側が充電口
   const chargingPortOnRight = isLandscape && insets.left >= insets.right;
 
   const voiceGuideText = voiceUnavailable
@@ -93,7 +87,6 @@ export function CameraLiveView({
         </Text>
       </View>
 
-      {/* 4:3撮影範囲外オーバーレイ */}
       {overlayThickness > 0 && isLandscape && (
         <>
           <View style={[styles.captureOverlay, { left: 0, top: 0, bottom: 0, width: overlayThickness }]} />
@@ -107,13 +100,9 @@ export function CameraLiveView({
         </>
       )}
 
-      {isCapturing && !backOnly && <CaptureSwitchingOverlay />}
-
       <View style={[styles.cameraControls, controlsStyle]}>
-        <TouchableOpacity
-          style={[styles.modeToggle, backOnly && styles.modeToggleActive]}
-          onPress={onToggleCameraMode}>
-          <Text style={styles.modeToggleText}>{backOnly ? '背面' : '前後'}</Text>
+        <TouchableOpacity style={styles.modeToggle} onPress={onToggleFacing}>
+          <Text style={styles.modeToggleText}>{facing === 'front' ? '内' : '外'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.shutterButton, isCapturing && styles.shutterDisabled]}
@@ -175,10 +164,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.42)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modeToggleActive: {
-    backgroundColor: 'rgba(243,184,200,0.30)',
-    borderColor: 'rgba(243,184,200,0.60)',
   },
   modeToggleText: {
     color: '#4D4650',
