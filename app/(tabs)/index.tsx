@@ -66,18 +66,18 @@ export default function CameraScreen() {
     onTrigger: takePhoto,
   });
 
-  // カメラ準備完了時にバッファ開始
-  const handleCameraReady = (f: typeof facing) => {
-    onCameraReady(f);
-    if (!bufferStatus.isBuffering) {
-      void startBuffering();
-    }
-  };
-
   // プレビュー中はバッファ停止
   useEffect(() => {
     if (previewVisible) stopBuffering();
   }, [previewVisible, stopBuffering]);
+
+  // onCameraReady 後にバッファ開始（ネイティブ側の準備完了を少し待つ）
+  const handleCameraReady = (f: Parameters<typeof onCameraReady>[0]) => {
+    onCameraReady(f);
+    setTimeout(() => {
+      void startBuffering();
+    }, 1500);
+  };
 
   if (previewVisible) {
     return (

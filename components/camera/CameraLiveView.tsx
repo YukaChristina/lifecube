@@ -95,7 +95,7 @@ export function CameraLiveView({
       <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
         <Text style={styles.bufferLabel}>
           {bufferStatus.isBuffering
-            ? `● REC ${bufferStatus.bufferedSecs}s / ${bufferStatus.chunkCount}chunks`
+            ? `● BUF ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
             : '○ バッファ停止中'}
         </Text>
       </View>

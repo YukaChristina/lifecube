@@ -68,18 +68,27 @@ P0 は①→②→③の順に進める。①②はリスクが低く早く結�
 
 直近30秒を常時バッファリングする仕組みを確認する。このプロダクトの中核であり、技術的に最も難易度が高い。
 
-進め方:
-1. `expo-camera` でチャンク録画（5秒ずつ×6本を循環）を実装して試す
-2. 継ぎ目の品質・メモリ使用量・発熱・バッテリー消費を実機で計測する
-3. 問題があれば `react-native-vision-camera` を評価する
-4. それでも難しい場合はネイティブモジュールの追加を検討する
+**検証結果（2026-05-25）**
 
-確認すること:
-- `expo-camera` の録画 API でローリングバッファが実現できるか
-- チャンク録画の継ぎ目がフレーム抽出に影響しないか
-- バッファ保持中の発熱・バッテリー消費が許容範囲か
-- バッファ用一時ファイルサイズと端末ストレージへの影響
-- `react-native-vision-camera` への移行が必要か
+`expo-camera` の `recordAsync` + `mode="video"` を試したが、以下の問題が発生した。
+
+- `mode="video"` を設定するとカメラプレビューが黒画面になる
+- `mode="video"` なしでは `recordAsync` が "Camera is not ready yet" エラーで失敗する
+- 根本原因：`expo-speech-recognition` が iOS の AudioSession を `measurement` モードで先行取得しており、`mode="video"` のビデオ録画がオーディオセッションの初期化に失敗する
+- `stopRecording()` を呼んでも `recordAsync` が resolve しない（ハング）
+
+**採用方針：フォトバースト方式（方針B）**
+
+動画録画の代わりに `takePictureAsync` を1〜2秒間隔で連続実行し、静止画のリングバッファを構成する。
+
+- 動画録画・フレーム抽出のステップが不要になり、実装がシンプルになる
+- AudioSession の競合を完全に回避できる
+- MVP の価値検証（ベストショット3枚提示）には十分
+- 元動画の保存機能はMVP後に改めて検討する
+
+**将来の動画録画方針（参考）**
+
+`expo-speech-recognition` と `mode="video"` を共存させるには iOS の AudioSession 管理が必要。具体的には、録音開始前に音声認識を停止するか、AudioSession の category/mode を両者が共存できる設定に統一する必要がある。対応する場合は `react-native-vision-camera` への移行も含めて検討する。
 
 ### P1: コア機能実装（技術検証後に着手）
 

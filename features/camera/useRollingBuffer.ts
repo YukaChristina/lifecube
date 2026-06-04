@@ -2,26 +2,28 @@ import { CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useCallback, useRef, useState } from 'react';
 
-const CHUNK_DURATION_SECS = 5;
-const MAX_CHUNKS = 6; // 30秒分
+// 1.5秒間隔で撮影、最大20枚（= 30秒分）を保持
+const INTERVAL_MS = 1500;
+const MAX_PHOTOS = 20;
 
 export type RollingBufferStatus = {
   isBuffering: boolean;
-  chunkCount: number;
+  photoCount: number;
   bufferedSecs: number;
 };
 
 export function useRollingBuffer(cameraRef: React.RefObject<CameraView | null>) {
   const [status, setStatus] = useState<RollingBufferStatus>({
     isBuffering: false,
-    chunkCount: 0,
+    photoCount: 0,
     bufferedSecs: 0,
   });
 
   const isBufferingRef = useRef(false);
-  const chunksRef = useRef<string[]>([]);
+  const photosRef = useRef<string[]>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const deleteChunk = useCallback(async (uri: string) => {
+  const deletePhoto = useCallback(async (uri: string) => {
     try {
       await FileSystem.deleteAsync(uri, { idempotent: true });
     } catch {
@@ -29,60 +31,67 @@ export function useRollingBuffer(cameraRef: React.RefObject<CameraView | null>) 
     }
   }, []);
 
+  const captureOne = useCallback(async () => {
+    if (!isBufferingRef.current) return;
+
+    try {
+      const result = await cameraRef.current?.takePictureAsync({
+        quality: 0.6,
+        skipProcessing: true,
+      });
+
+      if (result?.uri) {
+        // 古い写真を削除してリングバッファを更新
+        if (photosRef.current.length >= MAX_PHOTOS) {
+          void deletePhoto(photosRef.current[0]);
+          photosRef.current = photosRef.current.slice(1);
+        }
+        photosRef.current = [...photosRef.current, result.uri];
+
+        const count = photosRef.current.length;
+        setStatus({
+          isBuffering: true,
+          photoCount: count,
+          bufferedSecs: Math.round(count * INTERVAL_MS / 1000),
+        });
+        console.log(`[RollingBuffer] ${count}枚 / ${Math.round(count * INTERVAL_MS / 1000)}秒`);
+      }
+    } catch (e) {
+      console.warn('[RollingBuffer] 撮影エラー:', e);
+    }
+
+    // 次の撮影をスケジュール
+    if (isBufferingRef.current) {
+      timerRef.current = setTimeout(captureOne, INTERVAL_MS);
+    }
+  }, [cameraRef, deletePhoto]);
+
   const startBuffering = useCallback(async () => {
     if (isBufferingRef.current) return;
     isBufferingRef.current = true;
-    setStatus({ isBuffering: true, chunkCount: 0, bufferedSecs: 0 });
+    setStatus({ isBuffering: true, photoCount: 0, bufferedSecs: 0 });
     console.log('[RollingBuffer] 開始');
-
-    while (isBufferingRef.current) {
-      try {
-        console.log('[RollingBuffer] チャンク録画開始');
-        const result = await cameraRef.current?.recordAsync({
-          maxDuration: CHUNK_DURATION_SECS,
-        });
-
-        if (!result?.uri) {
-          console.warn('[RollingBuffer] チャンク取得失敗');
-          break;
-        }
-
-        console.log('[RollingBuffer] チャンク完了:', result.uri);
-
-        // 古いチャンクを削除してリングバッファを更新
-        if (chunksRef.current.length >= MAX_CHUNKS) {
-          void deleteChunk(chunksRef.current[0]);
-          chunksRef.current = chunksRef.current.slice(1);
-        }
-
-        chunksRef.current = [...chunksRef.current, result.uri];
-        const count = chunksRef.current.length;
-        setStatus({
-          isBuffering: true,
-          chunkCount: count,
-          bufferedSecs: count * CHUNK_DURATION_SECS,
-        });
-      } catch (e) {
-        console.warn('[RollingBuffer] エラー:', e);
-        break;
-      }
-    }
-
-    isBufferingRef.current = false;
-    setStatus(s => ({ ...s, isBuffering: false }));
-    console.log('[RollingBuffer] 停止');
-  }, [cameraRef, deleteChunk]);
+    void captureOne();
+  }, [captureOne]);
 
   const stopBuffering = useCallback(() => {
     isBufferingRef.current = false;
-    try {
-      cameraRef.current?.stopRecording();
-    } catch {
-      // ignore
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
-  }, [cameraRef]);
+    setStatus(s => ({ ...s, isBuffering: false }));
+    console.log('[RollingBuffer] 停止');
+  }, []);
 
-  const getChunks = useCallback(() => [...chunksRef.current], []);
+  const getPhotos = useCallback(() => [...photosRef.current], []);
 
-  return { status, startBuffering, stopBuffering, getChunks };
+  const clearPhotos = useCallback(async () => {
+    const toDelete = [...photosRef.current];
+    photosRef.current = [];
+    setStatus(s => ({ ...s, photoCount: 0, bufferedSecs: 0 }));
+    await Promise.all(toDelete.map(deletePhoto));
+  }, [deletePhoto]);
+
+  return { status, startBuffering, stopBuffering, getPhotos, clearPhotos };
 }
