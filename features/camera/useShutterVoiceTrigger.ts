@@ -11,7 +11,7 @@ type UseShutterVoiceTriggerOptions = {
   onTrigger: () => void;
 };
 
-const SHUTTER_TRIGGER_WORD = 'シャッター';
+const TRIGGER_WORDS = ['シャッター', '撮って', 'すごい', 'やばい', 'きた'] as const;
 const SPEECH_RESTART_DELAY_MS = 100;
 
 export function useShutterVoiceTrigger({
@@ -64,7 +64,7 @@ export function useShutterVoiceTrigger({
         lang: 'ja-JP',
         interimResults: true,
         maxAlternatives: 1,
-        contextualStrings: [SHUTTER_TRIGGER_WORD],
+        contextualStrings: [...TRIGGER_WORDS],
         continuous: true,
         iosCategory: {
           category: 'playAndRecord',
@@ -121,7 +121,7 @@ export function useShutterVoiceTrigger({
 
   useSpeechRecognitionEvent('result', (event) => {
     const text = event.results[0]?.transcript ?? '';
-    if (activeRef.current && text.includes(SHUTTER_TRIGGER_WORD) && !disabledRef.current) {
+    if (activeRef.current && TRIGGER_WORDS.some(word => text.includes(word)) && !disabledRef.current) {
       onTriggerRef.current();
     }
   });

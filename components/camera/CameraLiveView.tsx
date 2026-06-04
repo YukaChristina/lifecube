@@ -45,7 +45,7 @@ export function CameraLiveView({
 
   const voiceGuideText = voiceUnavailable
     ? '音声の許可が必要です'
-    : '「シャッター」と言うと撮影します';
+    : '「シャッター」「すごい」などで撮影します';
 
   const controlsStyle = isLandscape
     ? {
