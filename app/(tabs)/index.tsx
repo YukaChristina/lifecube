@@ -9,6 +9,7 @@ import { CapturePreview } from '@/components/camera/CapturePreview';
 import { useCameraPermissionFlow } from '@/features/camera/useCameraPermissionFlow';
 import { useCapturePreviewSession } from '@/features/camera/useCapturePreviewSession';
 import { useDualCameraCapture } from '@/features/camera/useDualCameraCapture';
+import { useRollingBuffer } from '@/features/camera/useRollingBuffer';
 import { useShutterVoiceTrigger } from '@/features/camera/useShutterVoiceTrigger';
 
 export default function CameraScreen() {
@@ -57,11 +58,26 @@ export default function CameraScreen() {
     screenOrientationFallback,
   });
 
+  const { status: bufferStatus, startBuffering, stopBuffering } = useRollingBuffer(cameraRef);
+
   const voice = useShutterVoiceTrigger({
     active: cameraActive && !previewVisible,
     disabled: isCapturing,
     onTrigger: takePhoto,
   });
+
+  // カメラ準備完了時にバッファ開始
+  const handleCameraReady = (f: typeof facing) => {
+    onCameraReady(f);
+    if (!bufferStatus.isBuffering) {
+      void startBuffering();
+    }
+  };
+
+  // プレビュー中はバッファ停止
+  useEffect(() => {
+    if (previewVisible) stopBuffering();
+  }, [previewVisible, stopBuffering]);
 
   if (previewVisible) {
     return (
@@ -100,8 +116,9 @@ export default function CameraScreen() {
       facing={facing}
       isCapturing={isCapturing}
       voiceUnavailable={voice.unavailable}
+      bufferStatus={bufferStatus}
       onCameraOrientationChange={onCameraOrientationChange}
-      onCameraReady={onCameraReady}
+      onCameraReady={handleCameraReady}
       onTakePhoto={takePhoto}
       onToggleFacing={toggleFacing}
     />
