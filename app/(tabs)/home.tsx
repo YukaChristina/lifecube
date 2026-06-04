@@ -1,10 +1,12 @@
 import { Canvas, Circle, Path, Rect } from '@shopify/react-native-skia';
-import { ScrollView, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable, useWindowDimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { loadSettings, saveSettings } from '@/utils/settings';
 import { CompositePattern } from '@/features/photo-sets/types';
 import { makeDiagonalCompositionPaths } from '@/features/photo-sets/diagonal-composition';
+import { extractFrames, type ExtractedFrame } from '@/utils/extractFrames';
 
 const PATTERNS: { id: CompositePattern; label: string }[] = [
   { id: 'circle', label: '円形くりぬき' },
@@ -29,6 +31,11 @@ export default function HomeScreen() {
   );
   const patternCardHeight = patternCardWidth / PATTERN_CARD_ASPECT_RATIO;
 
+  // フレーム抽出テスト用state
+  const [frames, setFrames] = useState<ExtractedFrame[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const [extractLog, setExtractLog] = useState('');
+
   useEffect(() => {
     loadSettings().then(s => setSelectedPattern(s.defaultPattern));
   }, []);
@@ -36,6 +43,32 @@ export default function HomeScreen() {
   const handleSelectPattern = async (pattern: CompositePattern) => {
     setSelectedPattern(pattern);
     await saveSettings({ defaultPattern: pattern });
+  };
+
+  const handlePickAndExtract = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'],
+      allowsEditing: false,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const durationMs = (asset.duration ?? 10) * 1000;
+    setExtracting(true);
+    setFrames([]);
+    setExtractLog('');
+
+    const start = Date.now();
+    try {
+      const extracted = await extractFrames(asset.uri, durationMs, 1000);
+      const elapsed = Date.now() - start;
+      setFrames(extracted);
+      setExtractLog(`${extracted.length}枚抽出 / ${(durationMs / 1000).toFixed(0)}秒動画 / ${elapsed}ms`);
+    } catch (e) {
+      setExtractLog(`エラー: ${String(e)}`);
+    } finally {
+      setExtracting(false);
+    }
   };
 
   return (
@@ -86,6 +119,34 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>課金設定</Text>
         <Text style={styles.bodyText}>準備中</Text>
+      </View>
+
+      {/* [DEV] フレーム抽出テスト */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>[DEV] フレーム抽出テスト</Text>
+        <Pressable
+          style={styles.testButton}
+          onPress={handlePickAndExtract}
+          disabled={extracting}>
+          <Text style={styles.testButtonText}>
+            {extracting ? '抽出中...' : '動画を選んで抽出'}
+          </Text>
+        </Pressable>
+        {extractLog !== '' && (
+          <Text style={styles.testLog}>{extractLog}</Text>
+        )}
+        {frames.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.frameRow}>
+              {frames.map((f) => (
+                <View key={f.timeMs} style={styles.frameItem}>
+                  <Image source={{ uri: f.uri }} style={styles.frameThumb} />
+                  <Text style={styles.frameTime}>{(f.timeMs / 1000).toFixed(1)}s</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        )}
       </View>
     </ScrollView>
   );
@@ -206,5 +267,40 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#F3B8C8',
+  },
+  testButton: {
+    backgroundColor: '#44504D',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  testLog: {
+    color: '#6F7976',
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+  frameRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  frameItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  frameThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 4,
+    backgroundColor: '#EEE',
+  },
+  frameTime: {
+    color: '#6F7976',
+    fontSize: 10,
   },
 });
