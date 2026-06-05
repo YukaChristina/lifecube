@@ -3,11 +3,8 @@
 # dependencies
 node_modules/
 
-# Expo (local-only files; .expo/web/ is tracked for EAS Build)
-.expo/packager-info.json
-.expo/devices.json*
-.expo/settings.json
-.expo/README.md
+# Expo
+.expo/
 dist/
 web-build/
 expo-env.d.ts
