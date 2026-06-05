@@ -1,21 +1,20 @@
-import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
-import type { RefObject } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Camera, type CameraPhotoOutput, type CameraRef, type CameraVideoOutput } from 'react-native-vision-camera';
 
-import type { RollingBufferStatus } from '@/features/camera/useRollingBuffer';
+import type { VisionBufferStatus } from '@/features/camera/useVisionRollingBuffer';
 
 type CameraLiveViewProps = {
-  cameraRef: RefObject<CameraView | null>;
-  facing: CameraType;
+  facing: 'front' | 'back';
   isCapturing: boolean;
   voiceUnavailable: boolean;
-  bufferStatus: RollingBufferStatus;
+  photoOutput: CameraPhotoOutput;
+  videoOutput: CameraVideoOutput;
+  bufferStatus: VisionBufferStatus;
   onStartBuffer: () => void;
   onStopBuffer: () => void;
-  onCameraOrientationChange: (orientation: CameraOrientation) => void;
-  onCameraReady: (facing: CameraType) => void;
+  onCameraReady: (facing: 'front' | 'back') => void;
   onTakePhoto: () => void;
   onToggleFacing: () => void;
 };
@@ -23,14 +22,14 @@ type CameraLiveViewProps = {
 const CONTROLS_WIDTH = 96;
 
 export function CameraLiveView({
-  cameraRef,
   facing,
   isCapturing,
   voiceUnavailable,
+  photoOutput,
+  videoOutput,
   bufferStatus,
   onStartBuffer,
   onStopBuffer,
-  onCameraOrientationChange,
   onCameraReady,
   onTakePhoto,
   onToggleFacing,
@@ -39,6 +38,7 @@ export function CameraLiveView({
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const [stealthMode, setStealthMode] = useState(false);
+  const cameraRef = useRef<CameraRef>(null);
 
   const captureAspect = 4 / 3;
   const overlayThickness = isLandscape
@@ -78,16 +78,15 @@ export function CameraLiveView({
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
+      <Camera
         ref={cameraRef}
-        responsiveOrientationWhenOrientationLocked
-        onCameraReady={() => onCameraReady(facing)}
-        onResponsiveOrientationChanged={({ orientation }) => onCameraOrientationChange(orientation)}
+        style={styles.camera}
+        device={facing}
+        isActive={true}
+        outputs={[photoOutput, videoOutput]}
+        onStarted={() => onCameraReady(facing)}
       />
 
-      {/* ステルスモード：ほぼ黒い画面で存在感を消す */}
       {stealthMode && (
         <TouchableOpacity
           style={[styles.stealthOverlay, { paddingTop: Math.max(insets.top, 40) }]}
@@ -98,7 +97,7 @@ export function CameraLiveView({
             <View style={[styles.stealthDot, bufferStatus.isBuffering && styles.stealthDotActive]} />
             <Text style={styles.stealthText}>
               {bufferStatus.isBuffering
-                ? `記録中 ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
+                ? `記録中 ${bufferStatus.bufferedSecs}s / ${bufferStatus.chunkCount}チャンク`
                 : '待機中'}
             </Text>
           </View>
@@ -117,7 +116,7 @@ export function CameraLiveView({
           <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
             <Text style={styles.bufferLabel}>
               {bufferStatus.isBuffering
-                ? `● BUF ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
+                ? `● REC ${bufferStatus.bufferedSecs}s / ${bufferStatus.chunkCount}チャンク`
                 : '○ バッファ停止中'}
             </Text>
           </View>
@@ -136,19 +135,16 @@ export function CameraLiveView({
           )}
 
           <View style={[styles.cameraControls, controlsStyle]}>
-            {/* 内/外カメラ切り替え */}
             <TouchableOpacity style={styles.iconButton} onPress={onToggleFacing}>
               <Text style={styles.iconButtonText}>{facing === 'front' ? '内' : '外'}</Text>
             </TouchableOpacity>
 
-            {/* シャッターボタン（音声トリガーと同等） */}
             <TouchableOpacity
               style={[styles.shutterButton, isCapturing && styles.shutterDisabled]}
               onPress={onTakePhoto}
               disabled={isCapturing}
             />
 
-            {/* 記録開始/停止 */}
             <TouchableOpacity
               style={[styles.iconButton, bufferStatus.isBuffering && styles.iconButtonActive]}
               onPress={bufferStatus.isBuffering ? onStopBuffer : onStartBuffer}
@@ -157,7 +153,6 @@ export function CameraLiveView({
             </TouchableOpacity>
           </View>
 
-          {/* ステルスモードに入るボタン */}
           <TouchableOpacity
             style={[styles.stealthButton, { top: Math.max(insets.top, 16) + 8, right: insets.right + 16 }]}
             onPress={() => setStealthMode(true)}

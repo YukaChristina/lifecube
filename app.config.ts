@@ -72,6 +72,13 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
           origin: "https://lifecube.app",
         },
       ],
+      [
+        "react-native-vision-camera",
+        {
+          cameraPermissionText: "カメラを使用して写真・動画を記録します。",
+          enableMicrophonePermission: false,
+        },
+      ],
       "expo-speech-recognition",
       [
         "expo-media-library",

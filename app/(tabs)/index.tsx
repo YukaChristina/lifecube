@@ -1,5 +1,5 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AppState, useWindowDimensions } from 'react-native';
 
 import { CameraLiveView } from '@/components/camera/CameraLiveView';
@@ -8,8 +8,8 @@ import { CameraWarmup } from '@/components/camera/CameraWarmup';
 import { CapturePreview } from '@/components/camera/CapturePreview';
 import { useCameraPermissionFlow } from '@/features/camera/useCameraPermissionFlow';
 import { useCapturePreviewSession } from '@/features/camera/useCapturePreviewSession';
-import { useDualCameraCapture } from '@/features/camera/useDualCameraCapture';
-import { useRollingBuffer } from '@/features/camera/useRollingBuffer';
+import { useVisionCameraCapture } from '@/features/camera/useVisionCameraCapture';
+import { useVisionRollingBuffer } from '@/features/camera/useVisionRollingBuffer';
 import { useShutterVoiceTrigger } from '@/features/camera/useShutterVoiceTrigger';
 
 export default function CameraScreen() {
@@ -45,23 +45,18 @@ export default function CameraScreen() {
   });
 
   const {
-    cameraRef,
     facing,
     isCapturing,
-    onCameraOrientationChange,
-    onCameraReady,
+    photoOutput,
+    videoOutput,
     takePhoto,
     toggleFacing,
-  } = useDualCameraCapture({
+  } = useVisionCameraCapture({
     onCaptured: startPreview,
-    backOnly: true,
     screenOrientationFallback,
   });
 
-  const isCapturingRef = useRef(isCapturing);
-  useEffect(() => { isCapturingRef.current = isCapturing; }, [isCapturing]);
-
-  const { status: bufferStatus, startBuffering, stopBuffering } = useRollingBuffer(cameraRef, isCapturingRef);
+  const { status: bufferStatus, startBuffering, stopBuffering } = useVisionRollingBuffer(videoOutput);
 
   useEffect(() => {
     if (previewVisible) stopBuffering();
@@ -113,15 +108,15 @@ export default function CameraScreen() {
 
   return (
     <CameraLiveView
-      cameraRef={cameraRef}
       facing={facing}
       isCapturing={isCapturing}
       voiceUnavailable={voice.unavailable}
+      photoOutput={photoOutput}
+      videoOutput={videoOutput}
       bufferStatus={bufferStatus}
       onStartBuffer={startBuffering}
       onStopBuffer={stopBuffering}
-      onCameraOrientationChange={onCameraOrientationChange}
-      onCameraReady={onCameraReady}
+      onCameraReady={activateCamera}
       onTakePhoto={takePhoto}
       onToggleFacing={toggleFacing}
     />
