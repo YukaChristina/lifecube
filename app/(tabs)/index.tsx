@@ -63,11 +63,6 @@ export default function CameraScreen() {
 
   const { status: bufferStatus, startBuffering, stopBuffering } = useRollingBuffer(cameraRef, isCapturingRef);
 
-  const handleCameraReady = (f: typeof facing) => {
-    onCameraReady(f);
-    setTimeout(() => { void startBuffering(); }, 1500);
-  };
-
   useEffect(() => {
     if (previewVisible) stopBuffering();
   }, [previewVisible, stopBuffering]);
@@ -123,8 +118,10 @@ export default function CameraScreen() {
       isCapturing={isCapturing}
       voiceUnavailable={voice.unavailable}
       bufferStatus={bufferStatus}
+      onStartBuffer={startBuffering}
+      onStopBuffer={stopBuffering}
       onCameraOrientationChange={onCameraOrientationChange}
-      onCameraReady={handleCameraReady}
+      onCameraReady={onCameraReady}
       onTakePhoto={takePhoto}
       onToggleFacing={toggleFacing}
     />

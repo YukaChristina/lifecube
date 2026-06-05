@@ -46,6 +46,7 @@ export function useRollingBuffer(
     try {
       const result = await cameraRef.current?.takePictureAsync({
         quality: 0.6,
+        skipProcessing: true,
       });
 
       if (result?.uri) {

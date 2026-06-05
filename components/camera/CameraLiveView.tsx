@@ -1,5 +1,6 @@
 import { CameraView, type CameraOrientation, type CameraType } from 'expo-camera';
 import type { RefObject } from 'react';
+import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +12,8 @@ type CameraLiveViewProps = {
   isCapturing: boolean;
   voiceUnavailable: boolean;
   bufferStatus: RollingBufferStatus;
+  onStartBuffer: () => void;
+  onStopBuffer: () => void;
   onCameraOrientationChange: (orientation: CameraOrientation) => void;
   onCameraReady: (facing: CameraType) => void;
   onTakePhoto: () => void;
@@ -25,6 +28,8 @@ export function CameraLiveView({
   isCapturing,
   voiceUnavailable,
   bufferStatus,
+  onStartBuffer,
+  onStopBuffer,
   onCameraOrientationChange,
   onCameraReady,
   onTakePhoto,
@@ -33,6 +38,7 @@ export function CameraLiveView({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const [stealthMode, setStealthMode] = useState(false);
 
   const captureAspect = 4 / 3;
   const overlayThickness = isLandscape
@@ -77,52 +83,89 @@ export function CameraLiveView({
         facing={facing}
         ref={cameraRef}
         responsiveOrientationWhenOrientationLocked
-        onCameraReady={() => {
-          onCameraReady(facing);
-        }}
-        onResponsiveOrientationChanged={({ orientation }) => {
-          onCameraOrientationChange(orientation);
-        }}
+        onCameraReady={() => onCameraReady(facing)}
+        onResponsiveOrientationChanged={({ orientation }) => onCameraOrientationChange(orientation)}
       />
 
-      <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
-        <Text style={[styles.voiceLabel, voiceUnavailable && styles.voiceLabelWarning]}>
-          {voiceGuideText}
-        </Text>
-      </View>
-
-      <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
-        <Text style={styles.bufferLabel}>
-          {bufferStatus.isBuffering
-            ? `● BUF ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
-            : '○ バッファ停止中'}
-        </Text>
-      </View>
-
-      {overlayThickness > 0 && isLandscape && (
-        <>
-          <View style={[styles.captureOverlay, { left: 0, top: 0, bottom: 0, width: overlayThickness }]} />
-          <View style={[styles.captureOverlay, { right: 0, top: 0, bottom: 0, width: overlayThickness }]} />
-        </>
-      )}
-      {overlayThickness > 0 && !isLandscape && (
-        <>
-          <View style={[styles.captureOverlay, { top: 0, left: 0, right: 0, height: overlayThickness }]} />
-          <View style={[styles.captureOverlay, { bottom: 0, left: 0, right: 0, height: overlayThickness }]} />
-        </>
-      )}
-
-      <View style={[styles.cameraControls, controlsStyle]}>
-        <TouchableOpacity style={styles.modeToggle} onPress={onToggleFacing}>
-          <Text style={styles.modeToggleText}>{facing === 'front' ? '内' : '外'}</Text>
-        </TouchableOpacity>
+      {/* ステルスモード：ほぼ黒い画面で存在感を消す */}
+      {stealthMode && (
         <TouchableOpacity
-          style={[styles.shutterButton, isCapturing && styles.shutterDisabled]}
-          onPress={onTakePhoto}
-          disabled={isCapturing}
-        />
-        <View style={isLandscape ? styles.controlSpacerV : styles.controlSpacer} />
-      </View>
+          style={[styles.stealthOverlay, { paddingTop: Math.max(insets.top, 40) }]}
+          onPress={() => setStealthMode(false)}
+          activeOpacity={1}
+        >
+          <View style={styles.stealthStatus}>
+            <View style={[styles.stealthDot, bufferStatus.isBuffering && styles.stealthDotActive]} />
+            <Text style={styles.stealthText}>
+              {bufferStatus.isBuffering
+                ? `記録中 ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
+                : '待機中'}
+            </Text>
+          </View>
+          <Text style={styles.stealthHint}>タップして戻る</Text>
+        </TouchableOpacity>
+      )}
+
+      {!stealthMode && (
+        <>
+          <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
+            <Text style={[styles.voiceLabel, voiceUnavailable && styles.voiceLabelWarning]}>
+              {voiceGuideText}
+            </Text>
+          </View>
+
+          <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
+            <Text style={styles.bufferLabel}>
+              {bufferStatus.isBuffering
+                ? `● BUF ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
+                : '○ バッファ停止中'}
+            </Text>
+          </View>
+
+          {overlayThickness > 0 && isLandscape && (
+            <>
+              <View style={[styles.captureOverlay, { left: 0, top: 0, bottom: 0, width: overlayThickness }]} />
+              <View style={[styles.captureOverlay, { right: 0, top: 0, bottom: 0, width: overlayThickness }]} />
+            </>
+          )}
+          {overlayThickness > 0 && !isLandscape && (
+            <>
+              <View style={[styles.captureOverlay, { top: 0, left: 0, right: 0, height: overlayThickness }]} />
+              <View style={[styles.captureOverlay, { bottom: 0, left: 0, right: 0, height: overlayThickness }]} />
+            </>
+          )}
+
+          <View style={[styles.cameraControls, controlsStyle]}>
+            {/* 内/外カメラ切り替え */}
+            <TouchableOpacity style={styles.iconButton} onPress={onToggleFacing}>
+              <Text style={styles.iconButtonText}>{facing === 'front' ? '内' : '外'}</Text>
+            </TouchableOpacity>
+
+            {/* シャッターボタン（音声トリガーと同等） */}
+            <TouchableOpacity
+              style={[styles.shutterButton, isCapturing && styles.shutterDisabled]}
+              onPress={onTakePhoto}
+              disabled={isCapturing}
+            />
+
+            {/* 記録開始/停止 */}
+            <TouchableOpacity
+              style={[styles.iconButton, bufferStatus.isBuffering && styles.iconButtonActive]}
+              onPress={bufferStatus.isBuffering ? onStopBuffer : onStartBuffer}
+            >
+              <Text style={styles.iconButtonText}>{bufferStatus.isBuffering ? '停止' : '記録'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ステルスモードに入るボタン */}
+          <TouchableOpacity
+            style={[styles.stealthButton, { top: Math.max(insets.top, 16) + 8, right: insets.right + 16 }]}
+            onPress={() => setStealthMode(true)}
+          >
+            <Text style={styles.stealthButtonText}>暗</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }
@@ -156,30 +199,37 @@ const styles = StyleSheet.create({
   voiceLabelWarning: {
     color: '#6D4A59',
   },
+  bufferIndicator: {
+    position: 'absolute',
+    alignSelf: 'center',
+  },
+  bufferLabel: {
+    color: 'rgba(255,100,100,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   cameraControls: {
     position: 'absolute',
     alignItems: 'center',
     paddingTop: 18,
   },
-  controlSpacer: {
-    width: 68,
-  },
-  controlSpacerV: {
-    height: 42,
-  },
-  modeToggle: {
-    width: 68,
-    height: 42,
-    borderRadius: 21,
+  iconButton: {
+    width: 52,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.20)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.42)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modeToggleText: {
-    color: '#4D4650',
-    fontSize: 13,
+  iconButtonActive: {
+    backgroundColor: 'rgba(220,80,80,0.35)',
+    borderColor: 'rgba(220,80,80,0.7)',
+  },
+  iconButtonText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '700',
   },
   shutterButton: {
@@ -197,13 +247,50 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  bufferIndicator: {
+  stealthButton: {
     position: 'absolute',
-    alignSelf: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  bufferLabel: {
-    color: 'rgba(255,100,100,0.9)',
+  stealthButtonText: {
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 11,
     fontWeight: '700',
+  },
+  stealthOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.97)',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 60,
+  },
+  stealthStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stealthDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  stealthDotActive: {
+    backgroundColor: 'rgba(220,80,80,0.9)',
+  },
+  stealthText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  stealthHint: {
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 11,
   },
 });
