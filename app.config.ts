@@ -52,6 +52,8 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
         NSPhotoLibraryAddUsageDescription: "撮影した写真を保存するために使用します。",
         NSPhotoLibraryUsageDescription:
           "撮影した写真を閲覧・保存するために使用します。",
+        NSCameraUsageDescription:
+          "カメラを使用して写真・動画を記録します。",
         ITSAppUsesNonExemptEncryption: false,
       },
     },
@@ -70,13 +72,6 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
         "expo-router",
         {
           origin: "https://lifecube.app",
-        },
-      ],
-      [
-        "react-native-vision-camera",
-        {
-          cameraPermissionText: "カメラを使用して写真・動画を記録します。",
-          enableMicrophonePermission: false,
         },
       ],
       "expo-speech-recognition",
