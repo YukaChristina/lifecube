@@ -1,5 +1,5 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, useWindowDimensions } from 'react-native';
 
 import { CameraLiveView } from '@/components/camera/CameraLiveView';
@@ -76,33 +76,44 @@ export default function CameraScreen() {
     return () => sub.remove();
   }, [stopBuffering]);
 
+  // 二重発火防止用 ref（state より速く更新される）
+  const isHandlingTriggerRef = useRef(false);
+
   // 音声トリガー発火時の処理
   const handleTrigger = useCallback(async () => {
-    // バッファが動いていればポストトリガーモードへ
-    const postTriggerPromise = firePostTrigger();
-    if (postTriggerPromise) {
-      console.log('[CameraScreen] ポストトリガー開始');
-      const chunks = await postTriggerPromise;
-      console.log(`[CameraScreen] 全${chunks.length}チャンク取得`);
+    if (isHandlingTriggerRef.current) return; // 二重発火を防ぐ
+    isHandlingTriggerRef.current = true;
+    try {
+      // バッファが動いていればポストトリガーモードへ
+      const postTriggerPromise = firePostTrigger();
+      if (postTriggerPromise) {
+        console.log('[CameraScreen] ポストトリガー開始');
+        const chunks = await postTriggerPromise;
+        console.log(`[CameraScreen] 全${chunks.length}チャンク取得`);
 
-      setIsExtracting(true);
-      try {
-        const frames = await extractFramesFromChunks(chunks);
-        const best = selectBestFrames(frames, 3);
-        if (best.length > 0) {
-          setCandidates(best);
+        setIsExtracting(true);
+        try {
+          const frames = await extractFramesFromChunks(chunks, 5);
+          console.log(`[CameraScreen] フレーム${frames.length}枚抽出`);
+          const best = selectBestFrames(frames, 3);
+          console.log(`[CameraScreen] 候補${best.length}枚選出`);
+          if (best.length > 0) {
+            setCandidates(best);
+          }
+          await clearChunks();
+        } catch (e) {
+          console.error('[CameraScreen] フレーム抽出失敗:', e);
+        } finally {
+          setIsExtracting(false);
         }
-        await clearChunks();
-      } catch (e) {
-        console.error('[CameraScreen] フレーム抽出失敗:', e);
-      } finally {
-        setIsExtracting(false);
+      } else if (bufferStatus.phase === 'idle') {
+        // バッファ停止中のみ通常の1枚撮影（ポストトリガー中は何もしない）
+        await takePhoto();
       }
-    } else {
-      // バッファ停止中 → 通常の1枚撮影
-      await takePhoto();
+    } finally {
+      isHandlingTriggerRef.current = false;
     }
-  }, [firePostTrigger, takePhoto, clearChunks]);
+  }, [firePostTrigger, takePhoto, clearChunks, bufferStatus.phase]);
 
   const voice = useShutterVoiceTrigger({
     active: cameraActive && !previewVisible,
