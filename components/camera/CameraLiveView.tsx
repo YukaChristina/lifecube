@@ -3,14 +3,11 @@ import type { RefObject } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { RollingBufferStatus } from '@/features/camera/useRollingBuffer';
-
 type CameraLiveViewProps = {
   cameraRef: RefObject<CameraView | null>;
   facing: CameraType;
   isCapturing: boolean;
   voiceUnavailable: boolean;
-  bufferStatus: RollingBufferStatus;
   onCameraOrientationChange: (orientation: CameraOrientation) => void;
   onCameraReady: (facing: CameraType) => void;
   onTakePhoto: () => void;
@@ -24,7 +21,6 @@ export function CameraLiveView({
   facing,
   isCapturing,
   voiceUnavailable,
-  bufferStatus,
   onCameraOrientationChange,
   onCameraReady,
   onTakePhoto,
@@ -88,15 +84,6 @@ export function CameraLiveView({
       <View style={[styles.voiceIndicator, { top: Math.max(insets.top, 16) + 8 }]}>
         <Text style={[styles.voiceLabel, voiceUnavailable && styles.voiceLabelWarning]}>
           {voiceGuideText}
-        </Text>
-      </View>
-
-      {/* [DEV] バッファ状態 */}
-      <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
-        <Text style={styles.bufferLabel}>
-          {bufferStatus.isBuffering
-            ? `● BUF ${bufferStatus.bufferedSecs}s / ${bufferStatus.photoCount}枚`
-            : '○ バッファ停止中'}
         </Text>
       </View>
 
@@ -197,14 +184,5 @@ const styles = StyleSheet.create({
   captureOverlay: {
     position: 'absolute',
     backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  bufferIndicator: {
-    position: 'absolute',
-    alignSelf: 'center',
-  },
-  bufferLabel: {
-    color: 'rgba(255,100,100,0.9)',
-    fontSize: 11,
-    fontWeight: '700',
   },
 });
