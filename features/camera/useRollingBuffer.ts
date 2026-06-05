@@ -43,7 +43,6 @@ export function useRollingBuffer(
       return;
     }
 
-    console.log('[RollingBuffer] ref:', !!cameraRef.current, 'isCapturing:', isCapturingRef.current);
     try {
       const result = await cameraRef.current?.takePictureAsync({
         quality: 0.6,
