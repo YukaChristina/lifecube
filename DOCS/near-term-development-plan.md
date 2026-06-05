@@ -77,18 +77,21 @@ P0 は①→②→③の順に進める。①②はリスクが低く早く結�
 - 根本原因：`expo-speech-recognition` が iOS の AudioSession を `measurement` モードで先行取得しており、`mode="video"` のビデオ録画がオーディオセッションの初期化に失敗する
 - `stopRecording()` を呼んでも `recordAsync` が resolve しない（ハング）
 
-**採用方針：フォトバースト方式（方針B）**
+**一時採用：フォトバースト方式（方針B）→ 廃止**
 
-動画録画の代わりに `takePictureAsync` を1〜2秒間隔で連続実行し、静止画のリングバッファを構成する。
+動画録画の代わりに `takePictureAsync` を1.5秒間隔で連続実行する方式を実装して動作確認した。
 
-- 動画録画・フレーム抽出のステップが不要になり、実装がシンプルになる
-- AudioSession の競合を完全に回避できる
-- MVP の価値検証（ベストショット3枚提示）には十分
-- 元動画の保存機能はMVP後に改めて検討する
+- 動作確認：最大30秒分（20枚）のバッファ保持は成功
+- **致命的問題（2026-06-05 判明）**：日本版 iPhone では `takePictureAsync` のシャッター音を消せない（法律要件）。サイレントモード・音量最小でも消えない。1.5秒ごとにシャッター音が鳴り、没入感を破壊するため採用不可。
 
-**将来の動画録画方針（参考）**
+**最終方針：react-native-vision-camera への移行**
 
-`expo-speech-recognition` と `mode="video"` を共存させるには iOS の AudioSession 管理が必要。具体的には、録音開始前に音声認識を停止するか、AudioSession の category/mode を両者が共存できる設定に統一する必要がある。対応する場合は `react-native-vision-camera` への移行も含めて検討する。
+`camera.startRecording({ audio: false })` を使う。
+
+- `audio: false` により AudioSession を占有しないため `expo-speech-recognition` との競合が発生しない
+- 動画録画にシャッター音はない
+- 5秒チャンクの動画ローリングバッファとして実現する
+- 再ビルド必要
 
 ### P1: コア機能実装（技術検証後に着手）
 
