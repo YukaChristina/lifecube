@@ -94,10 +94,12 @@ export function CameraLiveView({
           activeOpacity={1}
         >
           <View style={styles.stealthStatus}>
-            <View style={[styles.stealthDot, bufferStatus.isBuffering && styles.stealthDotActive]} />
+            <View style={[styles.stealthDot, bufferStatus.phase !== 'idle' && styles.stealthDotActive]} />
             <Text style={styles.stealthText}>
-              {bufferStatus.isBuffering
-                ? `記録中 ${bufferStatus.bufferedSecs}s / ${bufferStatus.chunkCount}チャンク`
+              {bufferStatus.phase === 'post-trigger'
+                ? `トリガー後 ${bufferStatus.postTriggerSecs}s / 30s`
+                : bufferStatus.phase === 'rolling'
+                ? `記録中 ${bufferStatus.bufferedSecs}s`
                 : '待機中'}
             </Text>
           </View>
@@ -115,7 +117,9 @@ export function CameraLiveView({
 
           <View style={[styles.bufferIndicator, { top: Math.max(insets.top, 16) + 48 }]}>
             <Text style={styles.bufferLabel}>
-              {bufferStatus.isBuffering
+              {bufferStatus.phase === 'post-trigger'
+                ? `● トリガー後 ${bufferStatus.postTriggerSecs}s / 30s`
+                : bufferStatus.phase === 'rolling'
                 ? `● REC ${bufferStatus.bufferedSecs}s / ${bufferStatus.chunkCount}チャンク`
                 : '○ バッファ停止中'}
             </Text>
@@ -146,10 +150,13 @@ export function CameraLiveView({
             />
 
             <TouchableOpacity
-              style={[styles.iconButton, bufferStatus.isBuffering && styles.iconButtonActive]}
-              onPress={bufferStatus.isBuffering ? onStopBuffer : onStartBuffer}
+              style={[styles.iconButton, bufferStatus.phase !== 'idle' && styles.iconButtonActive]}
+              onPress={bufferStatus.phase !== 'idle' ? onStopBuffer : onStartBuffer}
+              disabled={bufferStatus.phase === 'post-trigger'}
             >
-              <Text style={styles.iconButtonText}>{bufferStatus.isBuffering ? '停止' : '記録'}</Text>
+              <Text style={styles.iconButtonText}>
+                {bufferStatus.phase === 'post-trigger' ? '処理中' : bufferStatus.phase === 'rolling' ? '停止' : '記録'}
+              </Text>
             </TouchableOpacity>
           </View>
 
