@@ -17,7 +17,6 @@ export async function extractFrames(
   intervalMs: number = 1000,
 ): Promise<ExtractedFrame[]> {
   const frames: ExtractedFrame[] = [];
-  const timeMs = 0;
 
   for (let t = 0; t <= durationMs; t += intervalMs) {
     try {
@@ -26,8 +25,12 @@ export async function extractFrames(
         quality: 0.8,
       });
       frames.push({ uri, timeMs: t });
-    } catch {
-      // 抽出失敗したフレームはスキップ
+    } catch (e) {
+      console.warn(`[extractFrames] t=${t}ms 抽出失敗:`, e);
+      if (frames.length === 0 && t === 0) {
+        // 最初のフレームから失敗する場合はURIの問題なので即終了
+        throw new Error(`最初のフレーム抽出失敗 (URI: ${videoUri.slice(0, 80)}): ${String(e)}`);
+      }
     }
   }
 

@@ -12,7 +12,10 @@ export type RollingBufferStatus = {
   bufferedSecs: number;
 };
 
-export function useRollingBuffer(cameraRef: React.RefObject<CameraView | null>) {
+export function useRollingBuffer(
+  cameraRef: React.RefObject<CameraView | null>,
+  isCapturingRef: React.RefObject<boolean>,
+) {
   const [status, setStatus] = useState<RollingBufferStatus>({
     isBuffering: false,
     photoCount: 0,
@@ -34,10 +37,16 @@ export function useRollingBuffer(cameraRef: React.RefObject<CameraView | null>) 
   const captureOne = useCallback(async () => {
     if (!isBufferingRef.current) return;
 
+    // 通常撮影と競合しないようスキップ
+    if (isCapturingRef.current) {
+      timerRef.current = setTimeout(captureOne, INTERVAL_MS);
+      return;
+    }
+
+    console.log('[RollingBuffer] ref:', !!cameraRef.current, 'isCapturing:', isCapturingRef.current);
     try {
       const result = await cameraRef.current?.takePictureAsync({
         quality: 0.6,
-        skipProcessing: true,
       });
 
       if (result?.uri) {

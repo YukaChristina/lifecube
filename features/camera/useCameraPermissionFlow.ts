@@ -1,11 +1,10 @@
-import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking } from 'react-native';
 
 export function useCameraPermissionFlow() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [, requestMicPermission] = useMicrophonePermissions();
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraPermissionAsked, setCameraPermissionAsked] = useState(false);
 
@@ -18,18 +17,15 @@ export function useCameraPermissionFlow() {
   }, []);
 
   const requestCameraAccess = useCallback(async () => {
-    const [cameraResult] = await Promise.all([
-      requestPermission(),
-      requestMicPermission(),
-    ]);
-    if (!cameraResult.granted) {
+    const result = await requestPermission();
+    if (!result.granted) {
       deactivateCamera();
       return false;
     }
 
     activateCamera();
     return true;
-  }, [activateCamera, deactivateCamera, requestPermission, requestMicPermission]);
+  }, [activateCamera, deactivateCamera, requestPermission]);
 
   const handlePermissionAction = useCallback(async () => {
     if (permission?.canAskAgain === false) {
