@@ -68,6 +68,7 @@ export default function defineConfig(_context: ConfigContext): ExpoConfig {
       permissions: ["android.permission.RECORD_AUDIO"],
     },
     plugins: [
+      "./plugins/withVisionCameraFix",
       [
         "expo-router",
         {
