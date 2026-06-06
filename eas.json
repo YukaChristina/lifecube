@@ -22,6 +22,9 @@
       "autoIncrement": true,
       "environment": "preview",
       "channel": "preview",
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-16.4"
+      },
       "android": {
         "buildType": "apk"
       },
